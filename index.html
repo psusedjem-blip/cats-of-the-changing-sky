@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Cats of the Changing Sky</title>
+  <link rel="icon" type="image/png" href="icons/icon32.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="Cats of the Changing Sky game canvas"></canvas>
+  <main id="menu-overlay" class="ui-overlay menu-overlay" aria-label="Main menu">
+    <div class="ui-panel menu-panel">
+      <header><h1>Cats of the Changing Sky</h1><p>Choose a cat, a season, and a way to climb.</p></header>
+      <fieldset><legend>Cat</legend><div id="character-options" class="character-options"></div></fieldset>
+      <fieldset><legend>Season</legend><div id="season-options" class="season-options"></div></fieldset>
+      <fieldset><legend>Play mode</legend><div id="mode-options" class="mode-options"></div></fieldset>
+      <p id="menu-description" class="menu-description"></p>
+      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button></div>
+      <div class="audio-levels" role="group" aria-label="Audio levels"><label>Music <input id="music-level" type="range" min="0" max="100" step="5" value="100"></label><label>Effects <input id="effects-level" type="range" min="0" max="100" step="5" value="100"></label></div>
+      <p id="menu-best" class="menu-best"></p>
+      <p class="menu-help">Move with A/D, arrow keys, or mouse. Space or Enter launches. Esc returns here.</p>
+    </div>
+  </main>
+  <section id="board-overlay" class="ui-overlay board-overlay" role="dialog" aria-modal="true" aria-labelledby="board-title" hidden>
+    <div class="ui-panel board-panel">
+      <header class="board-header"><h2 id="board-title">Score board</h2><button id="close-scores" type="button">Close</button></header>
+      <div id="board-modes" class="board-modes" role="group" aria-label="Play mode"></div>
+      <div id="board-summary" class="board-summary"></div>
+      <ol id="board-records" class="board-records" tabindex="0" aria-label="Score records"></ol>
+    </div>
+  </section>
+  <script src="main.js?v=3.34.26"></script>
+</body>
+</html>

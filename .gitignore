@@ -1,0 +1,23 @@
+# Local capture and art production work, not the public game source.
+.playwright-cli/
+art-source/
+review/
+docs/
+media/
+*.md
+scripts/*
+!scripts/package-extension.py
+
+# Large unused source atlas; the runtime uses the clean WebP atlas.
+assets/zima-animation-atlas-256.png
+assets/zima-winter-cap.png
+
+# Generated packages and local tooling.
+*.zip
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.pem
+.crx

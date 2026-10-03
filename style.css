@@ -1,0 +1,102 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #071523;
+}
+body { user-select: none; -webkit-user-select: none; }
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  outline: none;
+  cursor: crosshair;
+  touch-action: none;
+}
+.ui-overlay { position: fixed; inset: 0; z-index: 2; display: grid; place-items: center; padding: 12px; color: #f4fbff; }
+.ui-overlay[hidden] { display: none; }
+.menu-overlay { background: linear-gradient(90deg, rgba(2,12,24,.42), rgba(2,12,24,.12), rgba(2,12,24,.42)); }
+.board-overlay { background: rgba(2,9,19,.80); }
+.ui-panel { width: min(100%, 820px); max-height: calc(100dvh - 24px); overflow: auto; padding: clamp(16px, 3vw, 28px); border: 2px solid var(--accent, #9fe8da); border-radius: 22px; background: rgba(4,17,30,.93); box-shadow: 0 18px 75px rgba(0,0,0,.42); scrollbar-color: var(--accent, #9fe8da) #122c3b; }
+.ui-panel h1, .ui-panel h2, .ui-panel p { margin: 0; }
+.ui-panel h1 { font-size: clamp(27px, 4vw, 49px); line-height: 1.08; text-align: center; text-transform: uppercase; letter-spacing: .035em; }
+.ui-panel header > p { color: #d8eaf2; text-align: center; margin-top: 5px; }
+.ui-panel fieldset { margin: 14px 0 0; padding: 0; border: 0; min-width: 0; }
+.ui-panel legend { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .13em; color: var(--accent, #9fe8da); margin-bottom: 7px; }
+.season-options, .mode-options, .board-modes, .character-options { display: grid; gap: 8px; }
+.character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.season-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mode-options, .board-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ui-panel button { min-width: 0; border: 1px solid rgba(221,242,251,.28); border-radius: 12px; background: rgba(255,255,255,.075); color: #f4fbff; padding: 11px 9px; font: inherit; font-weight: 750; cursor: pointer; }
+.ui-panel button:hover { background: rgba(255,255,255,.16); }
+.ui-panel button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.ui-panel button[aria-pressed="true"] { border: 2px solid var(--accent, #9fe8da); background: rgba(255,255,255,.18); color: var(--accent, #9fe8da); }
+.season-options button { min-height: 69px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.character-options button { min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.character-options img { width: min(100%, 112px); height: 58px; object-fit: contain; }
+.character-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
+.season-options small, .mode-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
+.mode-options button { min-height: 78px; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: center; }
+.menu-description { margin-top: 13px !important; color: #d9edf5; text-align: center; font-size: 14px; }
+.menu-actions { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+.menu-actions button { min-width: 140px; }
+.audio-levels { display: flex; justify-content: center; gap: 22px; margin-top: 8px; color: #d9edf5; font-size: 12px; }
+.audio-levels label { display: flex; align-items: center; gap: 7px; }
+.audio-levels input { width: 95px; accent-color: var(--accent, #9fe8da); }
+.ui-panel .primary-button { color: #071722; background: var(--accent, #9fe8da); border-color: var(--accent, #9fe8da); }
+.ui-panel .primary-button:hover { filter: brightness(1.13); background: var(--accent, #9fe8da); }
+.ui-panel button:disabled { opacity: .55; cursor: wait; }
+.menu-best { margin-top: 10px !important; text-align: center; font-size: 13px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.menu-help { margin-top: 7px !important; color: #bcd5e1; text-align: center; font-size: 11px; }
+.board-panel { width: min(100%, 850px); display: flex; flex-direction: column; }
+.board-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.board-header h2 { font-size: clamp(23px, 3vw, 31px); text-transform: uppercase; }
+.board-header button { min-width: 90px; }
+.board-modes { margin-top: 14px; }
+.board-summary { display: grid; gap: 5px; margin: 15px 0; font-size: 13px; }
+.board-summary p { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.board-summary strong { color: var(--accent, #9fe8da); }
+.board-records { min-height: 100px; margin: 0; padding: 0; list-style: none; overflow: auto; }
+.board-records:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.board-records li { margin-bottom: 7px; padding: 10px 12px; border-radius: 11px; background: rgba(255,255,255,.08); }
+.board-records li:first-child { background: rgba(255,255,255,.14); }
+.board-records .record-meta { display: block; color: var(--accent, #9fe8da); font-size: 12px; font-weight: 650; }
+.board-records .record-score { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; user-select: text; }
+@media (max-height: 650px) { .season-options button { min-height: 50px; } .character-options button { min-height: 76px; } .character-options img { height: 42px; } .mode-options button { min-height: 59px; } .ui-panel fieldset { margin-top: 9px; } .ui-panel { padding: 14px; } }
+@media (max-width: 520px) {
+  .season-options, .character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .character-options button { min-height: 67px; padding: 4px 2px; font-size: 10px; }
+  .character-options img { height: 38px; }
+  .character-options small, .season-options small { display: none; }
+  .season-options button { min-height: 45px; padding: 4px 2px; font-size: 11px; }
+  .mode-options button { padding: 8px 3px; font-size: 12px; }
+  .mode-options small { font-size: 10px; }
+  .menu-actions button { min-width: 0; flex: 1; }
+  .audio-levels { gap: 10px; }
+  .audio-levels input { width: 70px; }
+}
+@media (max-height: 520px) and (min-width: 521px) {
+  .menu-panel { padding: 10px 14px; }
+  .menu-panel h1 { font-size: 25px; }
+  .menu-panel header > p { font-size: 12px; margin-top: 2px; }
+  .menu-panel fieldset { margin-top: 5px; }
+  .menu-panel legend { margin-bottom: 3px; font-size: 11px; }
+  .character-options button { min-height: 60px; padding: 3px; gap: 0; font-size: 12px; }
+  .character-options img { height: 32px; }
+  .character-options small { font-size: 10px; }
+  .season-options button { min-height: 37px; padding: 3px; font-size: 12px; }
+  .season-options small { font-size: 10px; }
+  .mode-options button { min-height: 41px; padding: 3px; gap: 0; font-size: 12px; }
+  .menu-description { margin-top: 5px !important; font-size: 12px; }
+  .menu-actions { margin-top: 6px; }
+  .menu-actions button { padding: 6px 9px; }
+  .audio-levels { margin-top: 3px; }
+  .menu-best { margin-top: 4px !important; font-size: 11px; }
+  .menu-help { margin-top: 3px !important; font-size: 10px; }
+}
