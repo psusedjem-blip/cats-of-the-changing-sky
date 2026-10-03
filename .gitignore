@@ -5,6 +5,7 @@ review/
 docs/
 media/
 *.md
+!README.md
 scripts/*
 !scripts/package-extension.py
 
