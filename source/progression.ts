@@ -21,9 +21,9 @@ const PROGRESSION_ITEMS: { id: RewardId; name: string; cost: number; icon: strin
   { id: 'echo', name: 'Echo Charm', cost: 10, icon: 'echo-charm.webp', slot: 'utility', description: 'The first long fall per launch grants a brief steering cue.' },
   { id: 'bellwake', name: 'Bellwake', cost: 16, icon: 'bellwake.webp', slot: 'enchantment', description: 'First target contact after launch gains 5% bounce.' },
   { id: 'softfall', name: 'Softfall', cost: 16, icon: 'softfall.webp', slot: 'enchantment', description: 'Slow the first second of a long fall.' },
-  { id: 'catBed', name: 'Cat Bed', cost: 8, icon: 'cat-bed.webp', description: 'One Classic fall rescue. Returns near your last height at x1.' },
-  { id: 'campProvision', name: 'Camp Provision', cost: 6, icon: 'camp-provision.webp', description: 'One stronger opening launch from an Expedition camp.' },
-  { id: 'routeReroll', name: 'Route Reroll', cost: 5, icon: 'route-reroll.webp', description: 'Regenerate the next path at an Expedition camp.' },
+  { id: 'catBed', name: 'Cat Bed', cost: 8, icon: 'cat-bed.webp', description: 'Press 7 during a Classic run to arm one fall rescue. Returns near your last height at x1.' },
+  { id: 'campProvision', name: 'Camp Provision', cost: 6, icon: 'camp-provision.webp', description: 'Press 8 at an Expedition camp to arm a stronger next launch.' },
+  { id: 'routeReroll', name: 'Route Reroll', cost: 5, icon: 'route-reroll.webp', description: 'Press 9 at an Expedition camp to regenerate the next path immediately.' },
 ];
 const GEAR_IDS: GearId[] = ['windstep', 'softstep', 'compass', 'echo'];
 const ENCHANTMENT_IDS: EnchantmentId[] = ['bellwake', 'softfall'];
@@ -65,6 +65,8 @@ let runSoftfallTime = 0;
 let runEchoTime = 0;
 let runBedFxTime = 0;
 let runCampBoost = false;
+let catBedArmed = false;
+let campProvisionArmed = false;
 let runCrates: MysteryCrate[] = [];
 let nextCrateOrdinal = 12;
 
@@ -73,7 +75,11 @@ function startProgressRun(): void {
   runEquipped = !!(progress.movement || progress.utility || progress.enchantment);
   runBedUsed = false; runFirstBell = true; runEchoUsed = false; runSoftfallTime = 0;
   runEchoTime = 0; runBedFxTime = 0;
-  runCampBoost = false; runCrates = []; nextCrateOrdinal = 12;
+  runCampBoost = false; catBedArmed = false; campProvisionArmed = false;
+  runCrates = []; nextCrateOrdinal = 12;
+  showPowerupFeedback(selectedMode === 'classic' ? '1–6 equip gear. 7 arms a Cat Bed rescue. 0 shows fish.'
+    : selectedMode === 'expedition' ? '1–6 equip gear. At camp, 8 arms a Provision and 9 rerolls the route. 0 shows fish.'
+      : '1–6 equip gear. 0 shows fish.');
 }
 function awardFish(amount: number, reason: string): void {
   if (amount <= 0) return;
@@ -100,10 +106,14 @@ function rewardExpeditionStage(stage: number): void {
 }
 function beginLaunchProgress(): void {
   runFirstBell = true; runEchoUsed = false; runSoftfallTime = 0; runEchoTime = 0;
-  if (selectedMode === 'expedition' && expeditionCheckpointY > 0 && progress.supplies.campProvision > 0) {
+  const useProvision = selectedMode === 'expedition' && expeditionCheckpointY > 0 && campProvisionArmed && progress.supplies.campProvision > 0;
+  campProvisionArmed = false;
+  if (useProvision) {
     progress.supplies.campProvision--;
     runCampBoost = true; runEquipped = true; saveProgress();
   } else runCampBoost = false;
+  if (useProvision) showPowerupFeedback('Camp Provision used. This launch has a stronger opening jump.');
+  refreshProgressUi();
 }
 function purchaseItem(id: RewardId): boolean {
   const item = PROGRESSION_ITEMS.find(entry => entry.id === id);
@@ -126,6 +136,7 @@ function equipItem(id: RewardId): void {
   if (item.slot === 'movement') progress.movement = progress.movement === id ? null : id as GearId;
   else if (item.slot === 'utility') progress.utility = progress.utility === id ? null : id as GearId;
   else progress.enchantment = progress.enchantment === id ? null : id as EnchantmentId;
+  if (state !== 'title' && (progress.movement === id || progress.utility === id || progress.enchantment === id)) runEquipped = true;
   saveProgress();
 }
 function grantCrateReward(id: RewardId): void {
@@ -204,8 +215,9 @@ function drawCrates(): void {
   }
 }
 function tryCatBedRescue(): boolean {
-  if (selectedMode !== 'classic' || runBedUsed || progress.supplies.catBed < 1 || highestY < 350) return false;
-  progress.supplies.catBed--; runBedUsed = true; runEquipped = true; saveProgress();
+  if (selectedMode !== 'classic' || !catBedArmed || runBedUsed || progress.supplies.catBed < 1 || highestY < 350) return false;
+  progress.supplies.catBed--; catBedArmed = false; runBedUsed = true; runEquipped = true; saveProgress();
+  showPowerupFeedback('Cat Bed used. One rescue has returned you to the climb.');
   multiplier = 1; bounceChain = 0;
   const foothold = [...bells].reverse().find(bell => bell.touched && bellWorldY(bell) <= highestY);
   if (foothold) cat.x = foothold.x;
@@ -286,6 +298,53 @@ function rerollCampRoute(): boolean {
   return true;
 }
 
+function showPowerupFeedback(text: string): void {
+  const status = document.querySelector<HTMLElement>('#powerup-status');
+  if (status) status.textContent = text;
+}
+function activateInventorySlot(slot: number): void {
+  if (slot === 0) {
+    if (state === 'title') openProgressDialog('shop-overlay');
+    else showPowerupFeedback(`${progress.fish.toLocaleString()} fish. Spend them in Gear & supplies on the title screen.`);
+    return;
+  }
+  const item = PROGRESSION_ITEMS[slot - 1];
+  if (!item) return;
+  if (item.slot) {
+    if (!progress.owned.includes(item.id)) {
+      showPowerupFeedback(`${item.name} is empty. Buy it with fish or find it in a crate.`);
+      return;
+    }
+    equipItem(item.id);
+    const equipped = progress.movement === item.id || progress.utility === item.id || progress.enchantment === item.id;
+    showPowerupFeedback(`${item.name} ${equipped ? 'equipped' : 'unequipped'}.`);
+    return;
+  }
+  if (item.id === 'catBed') {
+    if (selectedMode !== 'classic' || state === 'title' || state === 'expeditionComplete') {
+      showPowerupFeedback('Cat Bed can be armed during a Classic climb.'); return;
+    }
+    if (runBedUsed) { showPowerupFeedback('Cat Bed has already rescued this run.'); return; }
+    if (!progress.supplies.catBed) { showPowerupFeedback('No Cat Beds. Buy one with fish or find one in a crate.'); return; }
+    catBedArmed = !catBedArmed;
+    showPowerupFeedback(`Cat Bed ${catBedArmed ? 'armed for a fall rescue' : 'disarmed'}.`);
+  } else if (item.id === 'campProvision') {
+    if (selectedMode !== 'expedition' || state !== 'expeditionCheckpoint') {
+      showPowerupFeedback('Camp Provision can be armed at an Expedition camp.'); return;
+    }
+    if (!progress.supplies.campProvision) { showPowerupFeedback('No Camp Provisions. Buy one with fish or find one in a crate.'); return; }
+    campProvisionArmed = !campProvisionArmed;
+    showPowerupFeedback(`Camp Provision ${campProvisionArmed ? 'armed for the next launch' : 'disarmed'}.`);
+  } else if (item.id === 'routeReroll') {
+    if (selectedMode !== 'expedition' || state !== 'expeditionCheckpoint') {
+      showPowerupFeedback('Route Reroll can be used at an Expedition camp.'); return;
+    }
+    if (!progress.supplies.routeReroll) { showPowerupFeedback('No Route Rerolls. Buy one with fish or find one in a crate.'); return; }
+    if (rerollCampRoute()) showPowerupFeedback('Route Reroll used. A new path is ready.');
+  }
+  refreshProgressUi();
+}
+
 let lastInventorySignature = '';
 function refreshProgressUi(): void {
   const balance = document.querySelector<HTMLElement>('#fish-balance');
@@ -295,21 +354,42 @@ function refreshProgressUi(): void {
   const shop = document.querySelector<HTMLElement>('#shop-items');
   if (shop && !document.querySelector<HTMLElement>('#shop-overlay')?.hidden) renderShop();
   const inventory = document.querySelector<HTMLElement>('#powerup-bar');
-  const inventorySignature = `${selectedTheme}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}`;
+  const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
   if (inventory && inventorySignature !== lastInventorySignature) {
     lastInventorySignature = inventorySignature;
     inventory.replaceChildren();
     inventory.style.setProperty('--accent', themeMeta().accent);
-    for (const item of PROGRESSION_ITEMS) {
+    for (const [index, item] of PROGRESSION_ITEMS.entries()) {
       const id = item.id;
       const amount = item.slot ? Number(progress.owned.includes(id)) : progress.supplies[id as SupplyId];
-      const active = progress.movement === id || progress.utility === id || progress.enchantment === id;
-      const cell = document.createElement('div'); cell.className = `powerup-cell${amount ? ' owned' : ''}${active ? ' active' : ''}`;
-      cell.title = `${item.name}: ${amount}${active ? ' · equipped' : ''}`;
-      const icon = document.createElement('img'); icon.src = `assets/progression/${item.icon}`; icon.alt = item.name;
-      const count = document.createElement('span'); count.textContent = `${amount}`;
-      cell.append(icon, count); inventory.append(cell);
+      const active = progress.movement === id || progress.utility === id || progress.enchantment === id
+        || (id === 'catBed' && catBedArmed) || (id === 'campProvision' && campProvisionArmed);
+      const key = index + 1;
+      const cell = document.createElement('button'); cell.type = 'button';
+      cell.className = `powerup-cell${amount ? ' owned' : ''}${active ? ' active' : ''}`;
+      const action = item.slot ? (active ? 'unequip' : 'equip') : id === 'catBed' ? (active ? 'disarm' : 'arm for rescue')
+        : id === 'campProvision' ? (active ? 'disarm' : 'arm for next camp launch') : 'use at camp';
+      cell.title = `${key}: ${item.name} (${amount}) — ${action}`;
+      cell.setAttribute('aria-label', cell.title);
+      cell.setAttribute('aria-keyshortcuts', String(key));
+      cell.setAttribute('aria-pressed', String(active));
+      const badge = document.createElement('kbd'); badge.textContent = String(key);
+      const icon = document.createElement('img'); icon.src = `assets/progression/${item.icon}`; icon.alt = '';
+      const count = document.createElement('span'); count.className = 'powerup-count'; count.textContent = `${amount}`;
+      cell.append(badge, icon, count);
+      cell.addEventListener('click', () => activateInventorySlot(key));
+      inventory.append(cell);
     }
+    const fish = document.createElement('button'); fish.type = 'button'; fish.className = 'powerup-cell fish-cell owned';
+    fish.title = `0: ${progress.fish.toLocaleString()} fish — view balance`;
+    fish.setAttribute('aria-label', fish.title);
+    fish.setAttribute('aria-keyshortcuts', '0');
+    const fishKey = document.createElement('kbd'); fishKey.textContent = '0';
+    const fishIcon = document.createElement('img'); fishIcon.src = 'assets/progression/fish.webp'; fishIcon.alt = '';
+    const fishCount = document.createElement('span'); fishCount.className = 'powerup-count'; fishCount.textContent = progress.fish.toLocaleString();
+    fish.append(fishKey, fishIcon, fishCount);
+    fish.addEventListener('click', () => activateInventorySlot(0));
+    inventory.append(fish);
   }
   const reroll = document.querySelector<HTMLButtonElement>('#reroll-route');
   if (reroll) reroll.disabled = state !== 'expeditionCheckpoint' || progress.supplies.routeReroll === 0;
@@ -373,15 +453,27 @@ function exportGameData(): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function initProgressionUi(): void {
+  document.getElementById('powerup-bar')?.addEventListener('keydown', event => {
+    if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
+  });
   document.getElementById('open-shop')?.addEventListener('click', () => openProgressDialog('shop-overlay'));
   document.getElementById('settings-button')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
   document.getElementById('close-shop')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('export-save')?.addEventListener('click', exportGameData);
-  document.getElementById('reroll-route')?.addEventListener('click', () => rerollCampRoute());
+  document.getElementById('reroll-route')?.addEventListener('click', () => activateInventorySlot(9));
   document.addEventListener('keydown', event => {
     const dialog = ['shop-overlay', 'settings-overlay']
       .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);
+    const hotkey = /^Digit([0-9])$/.exec(event.code);
+    const target = event.target as HTMLElement | null;
+    if (hotkey && (state !== 'title' || hotkey[1] === '0') && !dialog && !scoreboardOpen
+      && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey
+      && !target?.closest('input, textarea, select, [contenteditable="true"]')) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      activateInventorySlot(Number(hotkey[1]));
+      return;
+    }
     if (!dialog) return;
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closeProgressDialogs(); }
     if (event.key === 'Tab') {

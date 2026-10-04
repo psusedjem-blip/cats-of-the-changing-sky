@@ -618,9 +618,14 @@ function closeScoreboard(): void {
 
 let lastMenuUi = '';
 let lastBoardUi = '';
+let lastHotbarContext = '';
 function syncDomUi(): void {
   const inventory = document.querySelector<HTMLElement>('#powerup-bar');
   if (inventory) inventory.hidden = state === 'title';
+  const inventoryStatus = document.querySelector<HTMLElement>('#powerup-status');
+  if (inventoryStatus) inventoryStatus.hidden = state === 'title';
+  const hotbarContext = `${state}|${selectedMode}`;
+  if (hotbarContext !== lastHotbarContext) { lastHotbarContext = hotbarContext; refreshProgressUi(); }
   if (menuOverlay) {
     menuOverlay.hidden = state !== 'title' || scoreboardOpen;
     const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}`;
@@ -1720,6 +1725,7 @@ function settleExpeditionCheckpoint(): void {
   state = 'expeditionCheckpoint';
   message = '';
   messageTimer = 0;
+  showPowerupFeedback('At camp: press 8 to arm a Provision, 9 to reroll the route, or launch normally.');
   expeditionRetries++;
   cat.y = expeditionCheckpointY;
   cat.prevY = cat.y;

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cats of the Changing Sky",
-  "version": "3.35.0",
+  "version": "3.35.1",
   "description": "Four cats climb painted seasonal worlds in Classic, Zen, and Expedition modes.",
   "action": {
     "default_title": "Play Cats of the Changing Sky"
