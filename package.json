@@ -1,7 +1,7 @@
 {
   "name": "cats-of-the-changing-sky",
   "private": true,
-  "version": "3.35.1",
+  "version": "3.35.2",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",

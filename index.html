@@ -31,8 +31,9 @@
       <ol id="board-records" class="board-records" tabindex="0" aria-label="Score records"></ol>
     </div>
   </section>
-  <p id="powerup-status" class="powerup-status" role="status" aria-live="polite">Press 1–6 for gear, 7 for Cat Bed, 8 for Camp Provision, 9 for Route Reroll; 0 shows fish.</p>
+  <p id="powerup-status" class="powerup-status" role="status" aria-live="polite"></p>
   <div id="powerup-bar" class="powerup-bar" role="group" aria-label="Number row items and fish"></div>
+  <div id="powerup-tooltip" class="powerup-tooltip" role="tooltip" hidden></div>
   <button id="settings-button" class="settings-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
   <section id="shop-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title" hidden>
     <div class="ui-panel shop-panel">
@@ -45,11 +46,31 @@
   <section id="settings-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
     <div class="ui-panel settings-panel">
       <header class="dialog-header"><h2 id="settings-title">Settings</h2><button id="close-settings" type="button">Close</button></header>
+      <h3>Controls</h3>
+      <div class="settings-guide">
+        <div><strong>Move</strong><span>A / D, arrow keys, or mouse</span></div>
+        <div><strong>Launch / continue</strong><span>Space, Enter, or click</span></div>
+        <div><strong>Pause / resume</strong><span>P</span></div>
+        <div><strong>Settings</strong><span>N or the gear button</span></div>
+        <div><strong>Score board</strong><span>L</span></div>
+        <div><strong>Music</strong><span>M</span></div>
+        <div><strong>Restart</strong><span>R</span></div>
+        <div><strong>Title screen</strong><span>Esc</span></div>
+        <div><strong>Gear</strong><span>1–6 to equip or unequip</span></div>
+        <div><strong>Cat Bed</strong><span>7 arms a Classic rescue</span></div>
+        <div><strong>Camp Provision</strong><span>8 arms the next Expedition camp launch</span></div>
+        <div><strong>Route Reroll</strong><span>9 uses one at an Expedition camp</span></div>
+        <div><strong>Fish</strong><span>0 shows your balance</span></div>
+      </div>
+      <h3>Extension icon</h3>
+      <p>Choose the cat shown on the browser toolbar. This choice is separate from the cat you play.</p>
+      <div id="toolbar-icon-options" class="toolbar-icon-options" role="group" aria-label="Extension toolbar icon"></div>
+      <p id="toolbar-icon-feedback" class="toolbar-icon-feedback" role="status" aria-live="polite"></p>
       <p>Save a copy of this browser's scores, settings, fish, gear, and supplies.</p>
       <button id="export-save" type="button">Export game data</button>
       <button id="reroll-route" type="button">Use Route Reroll at camp (9)</button>
     </div>
   </section>
-  <script src="main.js?v=3.35.1"></script>
+  <script src="main.js?v=3.35.2"></script>
 </body>
 </html>

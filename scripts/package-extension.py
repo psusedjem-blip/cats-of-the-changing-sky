@@ -63,6 +63,13 @@ with zipfile.ZipFile(TEMP_OUTPUT) as archive:
         raise RuntimeError("Archive contains duplicate members")
     if any(name.endswith(".md") or "/media/" in name or "/docs/" in name for name in archive.namelist()):
         raise RuntimeError("Archive contains documentation or media")
+    icon_assets = [f"icons/icon{size}.png" for size in (16, 32, 48, 128)]
+    icon_assets += [f"icons/cats/{cat}-{size}.png"
+                    for cat in ("zima", "earl-grey", "betty-davis", "gracie-bell")
+                    for size in (16, 32, 48, 128)]
+    missing_icons = [ref for ref in icon_assets if PREFIX + ref not in archive.namelist()]
+    if missing_icons:
+        raise RuntimeError(f"Missing extension icon assets: {missing_icons}")
     if args.store:
         if "manifest.json" not in archive.namelist() or "README.md" in archive.namelist():
             raise RuntimeError("Store archive layout is invalid")

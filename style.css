@@ -50,8 +50,10 @@ canvas {
 .fish-wallet img { width: 25px; height: 25px; object-fit: contain; }
 .powerup-bar { position: fixed; z-index: 2; left: 14px; bottom: 12px; display: grid; grid-template-columns: repeat(10, 48px); gap: 4px; padding: 6px; border-radius: 12px; background: rgba(3,17,29,.82); }
 .powerup-bar[hidden] { display: none; }
-.powerup-status { position: fixed; z-index: 2; left: 14px; bottom: 70px; max-width: min(620px, calc(100vw - 90px)); margin: 0; padding: 5px 8px; border-radius: 8px; background: rgba(3,17,29,.82); color: #f7fbff; font: 650 11px/1.3 ui-rounded, system-ui, sans-serif; text-shadow: 0 1px 3px #00121f; pointer-events: none; }
-.powerup-status[hidden] { display: none; }
+.powerup-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.powerup-tooltip { position: fixed; z-index: 3; max-width: min(290px, calc(100vw - 20px)); padding: 9px 11px; border: 1px solid var(--accent, #9fe8da); border-radius: 10px; background: rgba(3,17,29,.97); color: #f7fbff; font: 600 12px/1.35 ui-rounded, system-ui, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.4); pointer-events: none; }
+.powerup-tooltip[hidden] { display: none; }
+.powerup-tooltip strong { display: block; margin-bottom: 3px; color: var(--accent, #9fe8da); font-size: 13px; }
 .powerup-cell { position: relative; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; padding: 3px; border: 1px solid rgba(255,255,255,.24); border-radius: 8px; background: rgba(255,255,255,.06); color: #f7fbff; font: 800 11px ui-rounded, system-ui, sans-serif; cursor: pointer; text-shadow: 0 2px 4px #00121f, 0 0 7px #00121f; }
 .powerup-cell:hover, .powerup-cell:focus-visible { border-color: var(--accent, #9fe8da); outline: 2px solid var(--accent, #9fe8da); outline-offset: 1px; }
 .powerup-cell.active { border-color: var(--accent, #9fe8da); background: rgba(255,255,255,.18); }
@@ -74,7 +76,17 @@ canvas {
 .shop-card strong { display: block; font-size: 14px; }
 .shop-card p { margin-top: 2px; color: #d7e9f2; font-size: 11px; }
 .shop-card button { grid-column: 2; padding: 6px 8px; font-size: 12px; }
-.settings-panel { width: min(100%, 520px); }
+.settings-panel { width: min(100%, 650px); }
+.settings-panel h3 { margin: 15px 0 8px; color: var(--accent, #9fe8da); font-size: 15px; text-transform: uppercase; letter-spacing: .08em; }
+.settings-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.settings-guide > div { display: flex; justify-content: space-between; gap: 8px; padding: 7px 9px; border-radius: 8px; background: rgba(255,255,255,.07); font-size: 11px; }
+.settings-guide strong { flex: 0 0 auto; color: var(--accent, #9fe8da); }
+.settings-guide span { text-align: right; }
+.toolbar-icon-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.toolbar-icon-options button { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 82px; padding: 8px 4px; font-size: 11px; }
+.toolbar-icon-options button[aria-pressed="true"] { border-color: var(--accent, #9fe8da); background: rgba(255,255,255,.18); }
+.toolbar-icon-options img { width: 43px; height: 43px; object-fit: contain; }
+.toolbar-icon-feedback { min-height: 15px; font-size: 11px; }
 .settings-panel > button { display: block; width: 100%; margin-top: 12px; }
 .audio-levels { display: flex; justify-content: center; gap: 22px; margin-top: 8px; color: #d9edf5; font-size: 12px; }
 .audio-levels label { display: flex; align-items: center; gap: 7px; }
@@ -101,7 +113,6 @@ canvas {
 @media (max-height: 650px) { .season-options button { min-height: 50px; } .character-options button { min-height: 76px; } .character-options img { height: 42px; } .mode-options button { min-height: 59px; } .ui-panel fieldset { margin-top: 9px; } .ui-panel { padding: 14px; } }
 @media (max-width: 620px) {
   .powerup-bar { left: 5px; bottom: 6px; grid-template-columns: repeat(5, 44px); gap: 3px; }
-  .powerup-status { left: 5px; bottom: 110px; max-width: min(258px, calc(100vw - 70px)); }
   .powerup-cell { width: 44px; height: 44px; }
   .powerup-cell img { width: 31px; height: 31px; }
 }
@@ -118,6 +129,7 @@ canvas {
   .menu-actions button { min-width: 0; flex: 1; }
   .audio-levels { gap: 10px; }
   .audio-levels input { width: 70px; }
+  .settings-guide { grid-template-columns: 1fr; }
 }
 @media (max-height: 520px) and (min-width: 521px) {
   .menu-panel { padding: 10px 14px; }

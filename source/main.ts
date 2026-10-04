@@ -1725,7 +1725,6 @@ function settleExpeditionCheckpoint(): void {
   state = 'expeditionCheckpoint';
   message = '';
   messageTimer = 0;
-  showPowerupFeedback('At camp: press 8 to arm a Provision, 9 to reroll the route, or launch normally.');
   expeditionRetries++;
   cat.y = expeditionCheckpointY;
   cat.prevY = cat.y;
@@ -3302,67 +3301,92 @@ function drawDecimal(value: bigint, x: number, y: number, maxWidth: number,
 
 function drawHUD(): void {
   ctx.save();
-  const scoreFont = '700 18px ui-rounded, system-ui, sans-serif';
-  const bestFont = '600 13px ui-rounded, system-ui, sans-serif';
-  const scoreLineCount = decimalLines(score, scoreFont, 222).length;
-  const bestLineCount = decimalLines(bestForMode(), bestFont, 222).length;
-  const panelH = 76 + scoreLineCount * 20 + bestLineCount * 16 + (selectedMode === 'expedition' ? 58 : 0);
+  const visibleWidth = Math.min(width, window.innerWidth);
+  const compact = visibleWidth < 1100;
+  const expedition = selectedMode === 'expedition';
+  const panelX = 18, panelY = 18;
+  const panelW = compact ? Math.max(260, visibleWidth - 36) : Math.min(visibleWidth - 250, expedition ? 850 : 650);
+  const scoreFont = compact ? '700 16px ui-rounded, system-ui, sans-serif' : '700 18px ui-rounded, system-ui, sans-serif';
+  const bestFont = compact ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif';
+  const scoreW = compact ? (panelW - 42) / 2 : expedition ? (panelW - 40) * .28 : (panelW - 40) * .34;
+  const bestW = compact ? scoreW : scoreW;
+  const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length,
+    decimalLines(bestForMode(), bestFont, bestW - 8).length);
+  const panelH = (compact ? expedition ? 137 : 117 : 84) + Math.max(0, lineCount - 1) * 19;
   ctx.fillStyle = 'rgba(4,18,30,.94)';
-  ctx.beginPath(); ctx.roundRect(18, 18, 254, panelH, 18); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 15); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.30)'; ctx.lineWidth = 1.1; ctx.stroke();
+  const firstX = panelX + 15;
+  const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
+  ctx.textAlign = 'left';
   ctx.fillStyle = themeMeta().accent;
-  ctx.font = '700 12px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(`SCORE  ·  ${themeMeta().label.toUpperCase()}`, 34, 39);
+  ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+  ctx.fillText(`SCORE · ${themeMeta().label.toUpperCase()}`, firstX, panelY + 21, scoreW - 4);
+  ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, secondX, panelY + 21, bestW - 4);
   ctx.fillStyle = '#f2fbff';
-  let nextY = drawDecimal(score, 34, 62, 222, scoreFont, 20);
-  ctx.fillStyle = '#eaf7ff';
-  ctx.font = '600 11px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, 34, nextY + 7);
-  nextY = drawDecimal(bestForMode(), 34, nextY + 24, 222, bestFont, 16);
-  ctx.font = '600 11px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(`BOUNCES ${bellCount}     MULTI x${multiplier}`, 34, nextY + 4);
-  if (selectedMode === 'expedition') {
-    const goals = expeditionGoals();
-    const target = goals[Math.min(2, expeditionStage)];
-    const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
-    const progress = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
+  drawDecimal(score, firstX, panelY + 47, scoreW - 8, scoreFont, 19);
+  drawDecimal(bestForMode(), secondX, panelY + 47, bestW - 8, bestFont, 19);
+  const statY = panelY + 58 + Math.max(0, lineCount - 1) * 19;
+  if (compact) {
+    ctx.fillStyle = '#eaf7ff';
+    ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 24, panelW - 30);
+    if (expedition) {
+      const goals = expeditionGoals();
+      const target = goals[Math.min(2, expeditionStage)];
+      ctx.fillStyle = themeMeta().accent;
+      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 44, panelW - 30);
+    }
+  } else {
+    const thirdX = secondX + bestW + 12;
     ctx.fillStyle = themeMeta().accent;
     ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`STAGE ${expeditionStage + 1}/3  ·  ${expeditionGoalName()}`, 34, nextY + 24, 220);
-    ctx.fillStyle = 'rgba(255,255,255,.20)';
-    ctx.beginPath(); ctx.roundRect(34, nextY + 34, 220, 8, 4); ctx.fill();
-    ctx.fillStyle = themeMeta().accent;
-    ctx.beginPath(); ctx.roundRect(34, nextY + 34, Math.max(1, 220 * progress), 8, 4); ctx.fill();
-    ctx.font = '600 10px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO  ·  ${expeditionRetries} RETRIES`, 34, nextY + 56, 220);
+    ctx.fillText('BOUNCES / MULTI', thirdX, panelY + 21, 145);
+    ctx.fillStyle = '#f2fbff';
+    ctx.font = '700 17px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(`${bellCount} / x${multiplier}`, thirdX, panelY + 47, 145);
+    if (expedition) {
+      const fourthX = thirdX + 150;
+      const goals = expeditionGoals();
+      const target = goals[Math.min(2, expeditionStage)];
+      const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
+      const fraction = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
+      const trackW = Math.max(50, panelX + panelW - fourthX - 16);
+      ctx.fillStyle = themeMeta().accent;
+      ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${expeditionGoalName()}`, fourthX, panelY + 21, trackW);
+      ctx.fillStyle = '#eaf7ff';
+      ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO · ${expeditionRetries} RETRIES`, fourthX, panelY + 47, trackW);
+      ctx.fillStyle = 'rgba(255,255,255,.20)';
+      ctx.beginPath(); ctx.roundRect(fourthX, panelY + 58, trackW, 6, 3); ctx.fill();
+      ctx.fillStyle = themeMeta().accent;
+      ctx.beginPath(); ctx.roundRect(fourthX, panelY + 58, Math.max(1, trackW * fraction), 6, 3); ctx.fill();
+    }
   }
-  ctx.textAlign = 'center';
   if (messageTimer > 0) {
     ctx.globalAlpha = Math.min(1, messageTimer * 1.8);
+    ctx.textAlign = 'center';
     ctx.font = '800 24px ui-rounded, system-ui, sans-serif';
     ctx.fillStyle = themeMeta().accent;
-    ctx.fillText(message, width / 2, Math.max(150, height * 0.19));
+    ctx.fillText(message, visibleWidth / 2, Math.max(170, height * 0.23), Math.max(230, visibleWidth - 32));
+    ctx.globalAlpha = 1;
   }
-  // Text sits directly on the painting. A dark outline and light shadow keep
-  // it legible over both pale daytime skies and the dark winter starfield.
-  const controlsX = width - 18;
-  const controlsY = width >= 850 ? 29 : 204;
+  // The compact shortcut stays readable over every sky; the full guide is in Settings.
+  const controlsX = visibleWidth - 18;
+  const controlsY = compact ? panelY + panelH + 25 : 38;
   ctx.textAlign = 'right';
   ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
   ctx.lineWidth = 4; ctx.lineJoin = 'round';
   ctx.strokeStyle = 'rgba(2,12,22,.95)';
   ctx.shadowColor = 'rgba(1,9,18,.8)'; ctx.shadowBlur = 5;
-  const line1 = `${selectedMode.toUpperCase()} · L Scores · P ${paused ? 'Resume' : 'Pause'} · Esc Menu`;
-  const line2 = `M Music ${muted ? 'off' : 'on'} · R Restart`;
-  ctx.strokeText(line1, controlsX, controlsY);
-  ctx.strokeText(line2, controlsX, controlsY + 25);
+  const controls = `${selectedMode.toUpperCase()} · N Settings`;
+  ctx.strokeText(controls, controlsX, controlsY);
   ctx.fillStyle = '#fffdf5';
-  ctx.fillText(line1, controlsX, controlsY);
-  ctx.fillText(line2, controlsX, controlsY + 25);
-  menuRect = { x: controlsX - 82, y: controlsY - 16, w: 82, h: 23 };
+  ctx.fillText(controls, controlsX, controlsY);
+  menuRect = { x: controlsX - Math.max(130, ctx.measureText(controls).width) - 5,
+    y: controlsY - 17, w: Math.max(130, ctx.measureText(controls).width) + 5, h: 24 };
   ctx.restore();
 }
-
 
 
 function drawTitle(): void {
@@ -4094,7 +4118,11 @@ canvas.addEventListener('pointerdown', e => {
     return;
   }
   mouseX = e.clientX;
-  if (state !== 'title' && pointInRect(e.clientX, e.clientY, menuRect)) { returnToTitle(); return; }
+  if (state !== 'title' && pointInRect(e.clientX, e.clientY, menuRect)) {
+    if (state === 'gameover' || state === 'expeditionComplete') returnToTitle();
+    else openProgressDialog('settings-overlay');
+    return;
+  }
   if (state === 'title') {
     const x = e.clientX;
     const y = e.clientY;

@@ -615,9 +615,6 @@ function startProgressRun() {
     campProvisionArmed = false;
     runCrates = [];
     nextCrateOrdinal = 12;
-    showPowerupFeedback(selectedMode === 'classic' ? '1–6 equip gear. 7 arms a Cat Bed rescue. 0 shows fish.'
-        : selectedMode === 'expedition' ? '1–6 equip gear. At camp, 8 arms a Provision and 9 rerolls the route. 0 shows fish.'
-            : '1–6 equip gear. 0 shows fish.');
 }
 function awardFish(amount, reason) {
     if (amount <= 0)
@@ -934,6 +931,10 @@ function showPowerupFeedback(text) {
     const status = document.querySelector('#powerup-status');
     if (status)
         status.textContent = text;
+    if (state !== 'title') {
+        message = text;
+        messageTimer = 2.2;
+    }
 }
 function activateInventorySlot(slot) {
     if (slot === 0) {
@@ -998,6 +999,27 @@ function activateInventorySlot(slot) {
     }
     refreshProgressUi();
 }
+function hideInventoryTooltip() {
+    const tooltip = document.querySelector('#powerup-tooltip');
+    if (tooltip)
+        tooltip.hidden = true;
+}
+function showInventoryTooltip(cell, heading, detail) {
+    const tooltip = document.querySelector('#powerup-tooltip');
+    if (!tooltip)
+        return;
+    const title = document.createElement('strong');
+    title.textContent = heading;
+    const copy = document.createElement('span');
+    copy.textContent = detail;
+    tooltip.replaceChildren(title, copy);
+    tooltip.style.setProperty('--accent', themeMeta().accent);
+    tooltip.hidden = false;
+    const rect = cell.getBoundingClientRect();
+    const left = Math.max(8, Math.min(window.innerWidth - tooltip.offsetWidth - 8, rect.left + rect.width / 2 - tooltip.offsetWidth / 2));
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${Math.max(8, rect.top - tooltip.offsetHeight - 8)}px`;
+}
 let lastInventorySignature = '';
 function refreshProgressUi() {
     const balance = document.querySelector('#fish-balance');
@@ -1013,6 +1035,7 @@ function refreshProgressUi() {
     const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
     if (inventory && inventorySignature !== lastInventorySignature) {
         lastInventorySignature = inventorySignature;
+        hideInventoryTooltip();
         inventory.replaceChildren();
         inventory.style.setProperty('--accent', themeMeta().accent);
         for (const [index, item] of PROGRESSION_ITEMS.entries()) {
@@ -1026,10 +1049,15 @@ function refreshProgressUi() {
             cell.className = `powerup-cell${amount ? ' owned' : ''}${active ? ' active' : ''}`;
             const action = item.slot ? (active ? 'unequip' : 'equip') : id === 'catBed' ? (active ? 'disarm' : 'arm for rescue')
                 : id === 'campProvision' ? (active ? 'disarm' : 'arm for next camp launch') : 'use at camp';
-            cell.title = `${key}: ${item.name} (${amount}) — ${action}`;
-            cell.setAttribute('aria-label', cell.title);
+            const guidance = item.slot ? `${item.description} Press ${key} or click to ${action}.`
+                : id === 'catBed' ? `Press 7 or click to ${active ? 'disarm' : 'arm'} during Classic. An armed Bed rescues one fatal fall at x1.`
+                    : id === 'campProvision' ? `Press 8 or click to ${active ? 'disarm' : 'arm'} at an Expedition camp. It boosts the next launch.`
+                        : 'Press 9 or click at an Expedition camp to reroll the next path.';
+            const detail = `${guidance} ${amount ? `${amount} available.` : 'None available; buy one with fish or find one in a crate.'}`;
+            cell.setAttribute('aria-label', `${item.name}. ${detail}`);
             cell.setAttribute('aria-keyshortcuts', String(key));
             cell.setAttribute('aria-pressed', String(active));
+            cell.setAttribute('aria-describedby', 'powerup-tooltip');
             const badge = document.createElement('kbd');
             badge.textContent = String(key);
             const icon = document.createElement('img');
@@ -1040,14 +1068,19 @@ function refreshProgressUi() {
             count.textContent = `${amount}`;
             cell.append(badge, icon, count);
             cell.addEventListener('click', () => activateInventorySlot(key));
+            cell.addEventListener('mouseenter', () => showInventoryTooltip(cell, item.name, detail));
+            cell.addEventListener('mouseleave', hideInventoryTooltip);
+            cell.addEventListener('focus', () => showInventoryTooltip(cell, item.name, detail));
+            cell.addEventListener('blur', hideInventoryTooltip);
             inventory.append(cell);
         }
         const fish = document.createElement('button');
         fish.type = 'button';
         fish.className = 'powerup-cell fish-cell owned';
-        fish.title = `0: ${progress.fish.toLocaleString()} fish — view balance`;
-        fish.setAttribute('aria-label', fish.title);
+        const fishDetail = `Press 0 or click to view your balance. ${progress.fish.toLocaleString()} fish available. Spend fish in Gear & supplies on the title screen.`;
+        fish.setAttribute('aria-label', `Fish. ${fishDetail}`);
         fish.setAttribute('aria-keyshortcuts', '0');
+        fish.setAttribute('aria-describedby', 'powerup-tooltip');
         const fishKey = document.createElement('kbd');
         fishKey.textContent = '0';
         const fishIcon = document.createElement('img');
@@ -1058,6 +1091,10 @@ function refreshProgressUi() {
         fishCount.textContent = progress.fish.toLocaleString();
         fish.append(fishKey, fishIcon, fishCount);
         fish.addEventListener('click', () => activateInventorySlot(0));
+        fish.addEventListener('mouseenter', () => showInventoryTooltip(fish, 'Fish', fishDetail));
+        fish.addEventListener('mouseleave', hideInventoryTooltip);
+        fish.addEventListener('focus', () => showInventoryTooltip(fish, 'Fish', fishDetail));
+        fish.addEventListener('blur', hideInventoryTooltip);
         inventory.append(fish);
     }
     const reroll = document.querySelector('#reroll-route');
@@ -1110,7 +1147,8 @@ function closeProgressDialogs() {
     canvas.focus();
 }
 function openProgressDialog(id) {
-    const wasPaused = paused;
+    const alreadyOpen = ['shop-overlay', 'settings-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
+    const wasPaused = alreadyOpen ? pauseBeforeDialog : paused;
     closeProgressDialogs();
     const overlay = document.getElementById(id);
     if (!overlay)
@@ -1127,6 +1165,71 @@ function openProgressDialog(id) {
     overlay.querySelector('button')?.focus();
 }
 let pauseBeforeDialog = false;
+function toolbarChrome() {
+    return globalThis.chrome;
+}
+const TOOLBAR_CAT_KEY = 'zima-skybells-toolbar-cat';
+let selectedToolbarCat = 'zima';
+let toolbarChoiceChanged = false;
+function refreshToolbarIconOptions() {
+    document.querySelectorAll('#toolbar-icon-options button[data-cat]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.cat === selectedToolbarCat)));
+}
+function toolbarIconFeedback(text) {
+    const status = document.querySelector('#toolbar-icon-feedback');
+    if (status)
+        status.textContent = text;
+}
+async function chooseToolbarIcon(cat) {
+    toolbarChoiceChanged = true;
+    selectedToolbarCat = cat;
+    localStorage.setItem(TOOLBAR_CAT_KEY, cat);
+    refreshToolbarIconOptions();
+    const api = toolbarChrome();
+    if (!api?.runtime?.sendMessage) {
+        toolbarIconFeedback('Preview only. Install the extension to change its browser icon.');
+        return;
+    }
+    try {
+        const response = await api.runtime.sendMessage({ type: 'set-toolbar-cat', cat });
+        if (!response?.ok)
+            throw new Error(response?.error || 'Icon update failed');
+        toolbarIconFeedback(`${CHARACTER_META[cat].name} is now the browser toolbar icon.`);
+    }
+    catch (error) {
+        toolbarIconFeedback(`Could not change the toolbar icon: ${String(error)}`);
+    }
+}
+function initToolbarIconOptions() {
+    const options = document.querySelector('#toolbar-icon-options');
+    if (!options)
+        return;
+    const stored = localStorage.getItem(TOOLBAR_CAT_KEY);
+    selectedToolbarCat = CHARACTER_ORDER.includes(stored) ? stored : 'zima';
+    for (const cat of CHARACTER_ORDER) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.cat = cat;
+        button.setAttribute('aria-label', `Use ${CHARACTER_META[cat].name} as the extension icon`);
+        const image = document.createElement('img');
+        image.src = `icons/cats/${cat}-128.png`;
+        image.alt = '';
+        const name = document.createElement('span');
+        name.textContent = CHARACTER_META[cat].name;
+        button.append(image, name);
+        button.addEventListener('click', () => { void chooseToolbarIcon(cat); });
+        options.append(button);
+    }
+    refreshToolbarIconOptions();
+    const storage = toolbarChrome()?.storage?.local;
+    if (storage)
+        void storage.get('toolbarCat').then(result => {
+            if (!toolbarChoiceChanged && CHARACTER_ORDER.includes(result.toolbarCat)) {
+                selectedToolbarCat = result.toolbarCat;
+                localStorage.setItem(TOOLBAR_CAT_KEY, selectedToolbarCat);
+                refreshToolbarIconOptions();
+            }
+        }).catch(error => console.warn('Toolbar icon preference could not be read.', error));
+}
 function exportGameData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -1143,6 +1246,7 @@ function exportGameData() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function initProgressionUi() {
+    initToolbarIconOptions();
     document.getElementById('powerup-bar')?.addEventListener('keydown', event => {
         if (event.code === 'Space' || event.code === 'Enter')
             event.stopPropagation();
@@ -1158,6 +1262,19 @@ function initProgressionUi() {
             .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);
         const hotkey = /^Digit([0-9])$/.exec(event.code);
         const target = event.target;
+        if (event.code === 'KeyN' && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey
+            && !target?.closest('input, textarea, select, [contenteditable="true"]')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (dialog?.id === 'settings-overlay')
+                closeProgressDialogs();
+            else {
+                if (scoreboardOpen)
+                    closeScoreboard();
+                openProgressDialog('settings-overlay');
+            }
+            return;
+        }
         if (hotkey && (state !== 'title' || hotkey[1] === '0') && !dialog && !scoreboardOpen
             && !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey
             && !target?.closest('input, textarea, select, [contenteditable="true"]')) {
@@ -2965,7 +3082,6 @@ function settleExpeditionCheckpoint() {
     state = 'expeditionCheckpoint';
     message = '';
     messageTimer = 0;
-    showPowerupFeedback('At camp: press 8 to arm a Provision, 9 to reroll the route, or launch normally.');
     expeditionRetries++;
     cat.y = expeditionCheckpointY;
     cat.prevY = cat.y;
@@ -5212,59 +5328,87 @@ function drawDecimal(value, x, y, maxWidth, font, lineHeight, align = 'left') {
 }
 function drawHUD() {
     ctx.save();
-    const scoreFont = '700 18px ui-rounded, system-ui, sans-serif';
-    const bestFont = '600 13px ui-rounded, system-ui, sans-serif';
-    const scoreLineCount = decimalLines(score, scoreFont, 222).length;
-    const bestLineCount = decimalLines(bestForMode(), bestFont, 222).length;
-    const panelH = 76 + scoreLineCount * 20 + bestLineCount * 16 + (selectedMode === 'expedition' ? 58 : 0);
+    const visibleWidth = Math.min(width, window.innerWidth);
+    const compact = visibleWidth < 1100;
+    const expedition = selectedMode === 'expedition';
+    const panelX = 18, panelY = 18;
+    const panelW = compact ? Math.max(260, visibleWidth - 36) : Math.min(visibleWidth - 250, expedition ? 850 : 650);
+    const scoreFont = compact ? '700 16px ui-rounded, system-ui, sans-serif' : '700 18px ui-rounded, system-ui, sans-serif';
+    const bestFont = compact ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif';
+    const scoreW = compact ? (panelW - 42) / 2 : expedition ? (panelW - 40) * .28 : (panelW - 40) * .34;
+    const bestW = compact ? scoreW : scoreW;
+    const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length, decimalLines(bestForMode(), bestFont, bestW - 8).length);
+    const panelH = (compact ? expedition ? 137 : 117 : 84) + Math.max(0, lineCount - 1) * 19;
     ctx.fillStyle = 'rgba(4,18,30,.94)';
     ctx.beginPath();
-    ctx.roundRect(18, 18, 254, panelH, 18);
+    ctx.roundRect(panelX, panelY, panelW, panelH, 15);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,.30)';
     ctx.lineWidth = 1.1;
     ctx.stroke();
+    const firstX = panelX + 15;
+    const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
+    ctx.textAlign = 'left';
     ctx.fillStyle = themeMeta().accent;
-    ctx.font = '700 12px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`SCORE  ·  ${themeMeta().label.toUpperCase()}`, 34, 39);
+    ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(`SCORE · ${themeMeta().label.toUpperCase()}`, firstX, panelY + 21, scoreW - 4);
+    ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, secondX, panelY + 21, bestW - 4);
     ctx.fillStyle = '#f2fbff';
-    let nextY = drawDecimal(score, 34, 62, 222, scoreFont, 20);
-    ctx.fillStyle = '#eaf7ff';
-    ctx.font = '600 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, 34, nextY + 7);
-    nextY = drawDecimal(bestForMode(), 34, nextY + 24, 222, bestFont, 16);
-    ctx.font = '600 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`BOUNCES ${bellCount}     MULTI x${multiplier}`, 34, nextY + 4);
-    if (selectedMode === 'expedition') {
-        const goals = expeditionGoals();
-        const target = goals[Math.min(2, expeditionStage)];
-        const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
-        const progress = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
+    drawDecimal(score, firstX, panelY + 47, scoreW - 8, scoreFont, 19);
+    drawDecimal(bestForMode(), secondX, panelY + 47, bestW - 8, bestFont, 19);
+    const statY = panelY + 58 + Math.max(0, lineCount - 1) * 19;
+    if (compact) {
+        ctx.fillStyle = '#eaf7ff';
+        ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+        ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 24, panelW - 30);
+        if (expedition) {
+            const goals = expeditionGoals();
+            const target = goals[Math.min(2, expeditionStage)];
+            ctx.fillStyle = themeMeta().accent;
+            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 44, panelW - 30);
+        }
+    }
+    else {
+        const thirdX = secondX + bestW + 12;
         ctx.fillStyle = themeMeta().accent;
         ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-        ctx.fillText(`STAGE ${expeditionStage + 1}/3  ·  ${expeditionGoalName()}`, 34, nextY + 24, 220);
-        ctx.fillStyle = 'rgba(255,255,255,.20)';
-        ctx.beginPath();
-        ctx.roundRect(34, nextY + 34, 220, 8, 4);
-        ctx.fill();
-        ctx.fillStyle = themeMeta().accent;
-        ctx.beginPath();
-        ctx.roundRect(34, nextY + 34, Math.max(1, 220 * progress), 8, 4);
-        ctx.fill();
-        ctx.font = '600 10px ui-rounded, system-ui, sans-serif';
-        ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO  ·  ${expeditionRetries} RETRIES`, 34, nextY + 56, 220);
+        ctx.fillText('BOUNCES / MULTI', thirdX, panelY + 21, 145);
+        ctx.fillStyle = '#f2fbff';
+        ctx.font = '700 17px ui-rounded, system-ui, sans-serif';
+        ctx.fillText(`${bellCount} / x${multiplier}`, thirdX, panelY + 47, 145);
+        if (expedition) {
+            const fourthX = thirdX + 150;
+            const goals = expeditionGoals();
+            const target = goals[Math.min(2, expeditionStage)];
+            const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
+            const fraction = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
+            const trackW = Math.max(50, panelX + panelW - fourthX - 16);
+            ctx.fillStyle = themeMeta().accent;
+            ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
+            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${expeditionGoalName()}`, fourthX, panelY + 21, trackW);
+            ctx.fillStyle = '#eaf7ff';
+            ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO · ${expeditionRetries} RETRIES`, fourthX, panelY + 47, trackW);
+            ctx.fillStyle = 'rgba(255,255,255,.20)';
+            ctx.beginPath();
+            ctx.roundRect(fourthX, panelY + 58, trackW, 6, 3);
+            ctx.fill();
+            ctx.fillStyle = themeMeta().accent;
+            ctx.beginPath();
+            ctx.roundRect(fourthX, panelY + 58, Math.max(1, trackW * fraction), 6, 3);
+            ctx.fill();
+        }
     }
-    ctx.textAlign = 'center';
     if (messageTimer > 0) {
         ctx.globalAlpha = Math.min(1, messageTimer * 1.8);
+        ctx.textAlign = 'center';
         ctx.font = '800 24px ui-rounded, system-ui, sans-serif';
         ctx.fillStyle = themeMeta().accent;
-        ctx.fillText(message, width / 2, Math.max(150, height * 0.19));
+        ctx.fillText(message, visibleWidth / 2, Math.max(170, height * 0.23), Math.max(230, visibleWidth - 32));
+        ctx.globalAlpha = 1;
     }
-    // Text sits directly on the painting. A dark outline and light shadow keep
-    // it legible over both pale daytime skies and the dark winter starfield.
-    const controlsX = width - 18;
-    const controlsY = width >= 850 ? 29 : 204;
+    // The compact shortcut stays readable over every sky; the full guide is in Settings.
+    const controlsX = visibleWidth - 18;
+    const controlsY = compact ? panelY + panelH + 25 : 38;
     ctx.textAlign = 'right';
     ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
     ctx.lineWidth = 4;
@@ -5272,14 +5416,12 @@ function drawHUD() {
     ctx.strokeStyle = 'rgba(2,12,22,.95)';
     ctx.shadowColor = 'rgba(1,9,18,.8)';
     ctx.shadowBlur = 5;
-    const line1 = `${selectedMode.toUpperCase()} · L Scores · P ${paused ? 'Resume' : 'Pause'} · Esc Menu`;
-    const line2 = `M Music ${muted ? 'off' : 'on'} · R Restart`;
-    ctx.strokeText(line1, controlsX, controlsY);
-    ctx.strokeText(line2, controlsX, controlsY + 25);
+    const controls = `${selectedMode.toUpperCase()} · N Settings`;
+    ctx.strokeText(controls, controlsX, controlsY);
     ctx.fillStyle = '#fffdf5';
-    ctx.fillText(line1, controlsX, controlsY);
-    ctx.fillText(line2, controlsX, controlsY + 25);
-    menuRect = { x: controlsX - 82, y: controlsY - 16, w: 82, h: 23 };
+    ctx.fillText(controls, controlsX, controlsY);
+    menuRect = { x: controlsX - Math.max(130, ctx.measureText(controls).width) - 5,
+        y: controlsY - 17, w: Math.max(130, ctx.measureText(controls).width) + 5, h: 24 };
     ctx.restore();
 }
 function drawTitle() {
@@ -6191,7 +6333,10 @@ canvas.addEventListener('pointerdown', e => {
     }
     mouseX = e.clientX;
     if (state !== 'title' && pointInRect(e.clientX, e.clientY, menuRect)) {
-        returnToTitle();
+        if (state === 'gameover' || state === 'expeditionComplete')
+            returnToTitle();
+        else
+            openProgressDialog('settings-overlay');
         return;
     }
     if (state === 'title') {

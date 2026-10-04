@@ -51,6 +51,7 @@ You choose the cat, season, and mode on the title screen. The scoreboard keeps r
 | Move left or right | `A` / `D`, arrow keys, or mouse |
 | Launch or continue | `Space`, `Enter`, or click |
 | Pause or resume | `P` |
+| Open or close Settings | `N` |
 | Mute or unmute | `M` |
 | Open the scoreboard | `L` |
 | Return to the title screen | `Esc` |
@@ -63,7 +64,7 @@ Climbing into a new altitude band and catching the first three airborne visitors
 
 The numbered item bar along the lower edge shows each item's silhouette and count. Click an icon or press its number on the keyboard's number row. **1–6** equip or unequip the six gear items; only one item in each gear slot can be active. Owned gear appears in color, and active items glow. **7** arms or disarms a Cat Bed during a Classic run. If armed, one Bed is consumed to rescue a fatal fall near your last height with the multiplier reset to x1. **8** arms or disarms a Camp Provision at an Expedition camp; it is consumed on the next launch for a stronger opening jump. **9** immediately uses a Route Reroll at an Expedition camp. **0** shows your total fish; fish can be spent in **Gear & supplies** on the title screen. The bar also accepts mouse clicks and gives feedback when an item is empty or unavailable in the current mode. Zen's ground relaunch and Expedition's base camp retries remain free.
 
-Scores from runs using functional gear or supplies are labeled **Equipped**. Earlier records and runs without them are **Standard**. Press the gear symbol in the lower right to open settings and export the browser's saved game data as JSON. The export is a backup; this beta does not yet import it.
+Scores from runs using functional gear or supplies are labeled **Equipped**. Earlier records and runs without them are **Standard**. Press `N` or the gear symbol in the lower right to open Settings; opening it during a run pauses play. Settings contains the full control guide, lets you choose any cat's painted bust for the browser toolbar icon, and exports the browser's saved game data as JSON. Zima is the default icon when installed. Your toolbar choice is independent of the cat you play and is restored when the browser starts. The browser's extension management page keeps the packaged default icon. The export is a backup; this beta does not yet import it.
 
 ## Install from GitHub
 
@@ -88,4 +89,4 @@ The climb uses upward world coordinates. Bells move downward through `fieldDrop`
 
 ## Privacy policy
 
-Cats of the Changing Sky is an offline browser extension game. It does not ask for an account and does not send game data to the developer or third parties. It does not use analytics, advertising, or online services. The game stores your chosen cat, season, mode, audio settings, scores, fish, gear, and supplies in this browser's local storage so they remain available the next time you play. You can export a copy in the settings menu. Removing the extension and its data clears the browser copy. For questions, use the [public issue tracker](https://github.com/psusedjem-blip/cats-of-the-changing-sky/issues).
+Cats of the Changing Sky is an offline browser extension game. It does not ask for an account and does not send game data to the developer or third parties. It does not use analytics, advertising, or online services. The game stores your chosen cat, season, mode, audio settings, scores, fish, gear, and supplies in this browser's local storage so they remain available the next time you play. The toolbar icon choice is also kept in the browser's extension storage so it can be restored when the browser starts. You can export a copy of the saved game data in Settings. Removing the extension and its data clears the browser copy. For questions, use the [public issue tracker](https://github.com/psusedjem-blip/cats-of-the-changing-sky/issues).
