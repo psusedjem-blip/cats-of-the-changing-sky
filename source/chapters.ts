@@ -27,7 +27,7 @@ const CHAPTER_BANDS: Record<ThemeName, [ChapterBand, ChapterBand, ChapterBand]> 
   ],
 };
 
-type UpperRealmArt = { mid: HTMLImageElement; high: HTMLImageElement; bridge: HTMLImageElement; state: 'loading' | 'ready' | 'failed' };
+type UpperRealmArt = { mid: HTMLImageElement; high: HTMLImageElement; bridge: HTMLImageElement; state: 'idle' | 'loading' | 'ready' | 'failed' };
 const UPPER_REALM_PATHS: Record<ThemeName, { mid: string; high: string }> = {
   winter: { mid: 'assets/themes/winter/winter-mid-terrain-v2.png', high: 'assets/themes/winter/winter-high-terrain.webp' },
   spring: { mid: 'assets/themes/spring/spring-mid-terrain.webp', high: 'assets/themes/spring/spring-high-terrain.webp' },
@@ -43,11 +43,8 @@ const UPPER_FOOTHOLD_PATHS: Record<ThemeName, string> = {
 const upperRealmArt = {} as Record<ThemeName, UpperRealmArt>;
 const upperFootholdArt = {} as Record<ThemeName, HTMLImageElement>;
 const winterContinuousWorld = new Image();
-winterContinuousWorld.src = 'assets/themes/winter/winter-continuous-world-v1.png';
 const winterUpperSky = new Image();
-winterUpperSky.src = 'assets/themes/winter/winter-upper-sky-v1.png';
 const winterStarfield = new Image();
-winterStarfield.src = 'assets/themes/winter/winter-starfield-v1.png';
 let preparedWinterWorld: HTMLCanvasElement | null = null;
 let preparedWinterUpperSky: HTMLCanvasElement | null = null;
 let preparedWinterStarfield: HTMLCanvasElement | null = null;
@@ -67,16 +64,44 @@ for (const theme of ['spring', 'summer', 'autumn'] as const) {
   const world = new Image();
   const upper = new Image();
   const starfield = new Image();
-  world.src = `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
-  upper.src = `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
-  starfield.src = `assets/themes/${theme}/${theme}-starfield-v1.png`;
   seasonContinuousArt[theme] = {
     world, upper, starfield, preparedWorld: null, preparedUpper: null,
     preparedStarfield: null, wisps: null,
   };
 }
 
+const continuousState: Record<ThemeName, 'idle' | 'loading' | 'ready' | 'failed'> = {
+  winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle',
+};
+function loadContinuousSeason(theme: ThemeName): void {
+  if (continuousState[theme] !== 'idle') return;
+  continuousState[theme] = 'loading';
+  const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
+    : seasonContinuousArt[theme];
+  art.world.src = `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+  art.upper.src = `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
+  art.starfield.src = `assets/themes/${theme}/${theme}-starfield-v1.png`;
+  void Promise.all([art.world, art.upper, art.starfield].map(image => image.decode())).then(() => {
+    continuousState[theme] = 'ready';
+  }).catch(error => {
+    continuousState[theme] = 'failed';
+    console.warn(`${theme} continuous world unavailable; using earlier scenery.`, error);
+  });
+}
+function releasePreparedSeason(theme: ThemeName): void {
+  if (theme === 'winter') {
+    preparedWinterWorld = null; preparedWinterUpperSky = null; preparedWinterStarfield = null;
+    winterSkyWisps = null;
+  } else {
+    const art = seasonContinuousArt[theme];
+    art.preparedWorld = art.preparedUpper = art.preparedStarfield = null;
+    art.wisps = null;
+  }
+  if (preparedUpperTerrain?.theme === theme) preparedUpperTerrain = null;
+}
+
 function continuousSeasonReady(theme: ThemeName): boolean {
+  if (continuousState[theme] !== 'ready') return false;
   const images = theme === 'winter'
     ? [winterContinuousWorld, winterUpperSky, winterStarfield]
     : [seasonContinuousArt[theme].world, seasonContinuousArt[theme].upper, seasonContinuousArt[theme].starfield];
@@ -423,8 +448,14 @@ for (const theme of ['winter', 'spring', 'summer', 'autumn'] as ThemeName[]) {
   const mid = new Image();
   const high = new Image();
   const bridge = new Image();
-  const art: UpperRealmArt = { mid, high, bridge, state: 'loading' };
+  const art: UpperRealmArt = { mid, high, bridge, state: 'idle' };
   upperRealmArt[theme] = art;
+}
+function loadUpperRealm(theme: ThemeName): void {
+  const art = upperRealmArt[theme];
+  if (art.state !== 'idle') return;
+  art.state = 'loading';
+  const { mid, high, bridge } = art;
   let decoding = false;
   const check = (): void => {
     if (decoding || !mid.complete || !high.complete || !bridge.complete ||

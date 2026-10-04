@@ -1,0 +1,14 @@
+{
+  "name": "cats-of-the-changing-sky",
+  "private": true,
+  "version": "3.35.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "package:store": "npm run build && python scripts/package-extension.py --store",
+    "package:sideload": "npm run build && python scripts/package-extension.py"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

@@ -4,7 +4,7 @@
 
 Cats of the Changing Sky is a small, self-contained climbing game for desktop Chrome and Microsoft Edge. Choose a cat, a season, and a way to play. Steer from one floating target to the next as a painted village gives way to mountains, weather, and an open sky. Each contact sends your cat higher; a missed landing can send them all the way back down.
 
-The game opens in its own browser tab when you click the extension icon. It has no account or online play. Scores and preferences are saved in the browser on that device.
+The game opens in its own browser tab when you click the extension icon. It has no account or online play. Scores, preferences, fish, gear, and supplies are saved in the browser on that device.
 
 ## Meet the climbers
 
@@ -34,7 +34,7 @@ The scenery moves with the ascent rather than repeating a short backdrop. Each s
 | --- | --- |
 | **Classic** | An endless high-score climb. Keep reaching targets; a return to the ground ends the run. |
 | **Zen** | A continuous climb with gentler restarts. Landing on the ground lets you launch again without clearing that run's score. |
-| **Expedition** | A longer summit journey with goals at 14,000, 28,000, and 42,000 altitude. Two base camps let you retry the next stretch without restarting from the village. |
+| **Expedition** | A longer summit journey with goals at 14,000, 28,000, and 42,000 altitude. Two base camps let you retry the next stretch without restarting from the village. Only completed summit runs enter the Expedition score board. |
 
 You choose the cat, season, and mode on the title screen. The scoreboard keeps records separately for each mode and shows the cat and season for recorded runs.
 
@@ -57,9 +57,17 @@ You choose the cat, season, and mode on the title screen. The scoreboard keeps r
 
 The title screen also has separate Music and Effects sliders.
 
+## Fish, gear, and supplies (beta)
+
+Climbing into a new altitude band and catching the first three airborne visitors in a run earn painted fish. Expedition base camps and the summit give extra fish. Fish are separate from score. Open **Gear & supplies** on the title screen to spend them. Gear stays in your collection; supplies are consumed when used. Mystery crates appear along the climb. Their displayed reward cycles faster as time passes; touching a crate grants its current reward. A crate you leave behind pays two fish instead.
+
+The inventory along the lower edge shows each item's silhouette and count. Owned gear appears in color, and equipped gear glows. The **Cat Bed** is a one-use Classic rescue that returns your cat near the last reached height with the multiplier reset to x1. Zen's ground relaunch and Expedition's base camp retries remain free. Expedition can use a Camp Provision for a stronger launch from camp or a Route Reroll through the settings menu while at camp.
+
+Scores from runs using functional gear or supplies are labeled **Equipped**. Earlier records and runs without them are **Standard**. Press the gear symbol in the lower right to open settings and export the browser's saved game data as JSON. The export is a backup; this beta does not yet import it.
+
 ## Install from GitHub
 
-Get the game ZIP from the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). Download the asset named `cats-of-the-changing-sky-v3.34.26.zip` for this version; GitHub's automatic **Source code** ZIP is different. Extract the download and keep its `zima-skybells-extension` folder in a permanent location.
+For the current stable release, get the game ZIP from the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). Download the asset named `cats-of-the-changing-sky-v3.34.26.zip`; GitHub's automatic **Source code** ZIP is different. Extract the download and keep its `zima-skybells-extension` folder in a permanent location.
 
 - **Chrome:** Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `zima-skybells-extension` folder.
 - **Edge:** Open `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the same folder.
@@ -69,3 +77,15 @@ The selected folder should contain `manifest.json`. Click or pin the extension's
 ## About the art
 
 The character and scenery art was **generated with AI**, then selected, revised, and integrated for this game. The dedication is simple: **For Henry.**
+
+## Beta source and build
+
+The `main` branch is the stable game. Work on this `beta` branch remains separate until it is ready for a stable release. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit `source/main.ts`, `source/chapters.ts`, and `source/progression.ts`; `main.js` is generated. The runtime stylesheet is `style.css`.
+
+Install Node.js and Python 3, then run `npm ci` and `npm run check`. `npm run build` compiles TypeScript. `npm run package:store` builds the store ZIP with `manifest.json` at its root; `npm run package:sideload` builds the GitHub ZIP with an enclosing extension folder. The packaging script checks archive integrity and asset references before replacing a release ZIP. Review each cat, season, and mode in a browser before distributing a beta package.
+
+The climb uses upward world coordinates. Bells move downward through `fieldDrop`, while painted sky panels use fixed altitude anchors in `source/chapters.ts`. Mystery crates have fixed world positions. Keep the two coordinate systems distinct when changing contacts or scenery. Existing `zima-skybells-*` local storage keys hold scores and preferences; `cats-changing-sky-progression-v1` holds fish, owned gear, equipped slots, and supplies. Increase the manifest version and the `main.js` query version together for each packaged update.
+
+## Privacy policy
+
+Cats of the Changing Sky is an offline browser extension game. It does not ask for an account and does not send game data to the developer or third parties. It does not use analytics, advertising, or online services. The game stores your chosen cat, season, mode, audio settings, scores, fish, gear, and supplies in this browser's local storage so they remain available the next time you play. You can export a copy in the settings menu. Removing the extension and its data clears the browser copy. For questions, use the [public issue tracker](https://github.com/psusedjem-blip/cats-of-the-changing-sky/issues).

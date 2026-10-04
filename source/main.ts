@@ -1,4 +1,5 @@
 /// <reference path="./chapters.ts" />
+/// <reference path="./progression.ts" />
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const ctx = canvas.getContext('2d', { alpha: false })!;
@@ -23,7 +24,7 @@ type CharacterId = 'zima' | 'earl-grey' | 'betty-davis' | 'gracie-bell';
 type CompanionId = Exclude<CharacterId, 'zima'>;
 type CompanionPose = 'idle' | 'walk' | 'rise' | 'fall' | 'contact' | 'land';
 type Rect = { x: number; y: number; w: number; h: number };
-type ScoreRecord = { score: bigint; approximate?: boolean; bounces: number; multiplier: number; retries?: number; theme: ThemeName; mode: GameMode; cat: CharacterId; at: number };
+type ScoreRecord = { score: bigint; approximate?: boolean; equipped?: boolean; bounces: number; multiplier: number; retries?: number; theme: ThemeName; mode: GameMode; cat: CharacterId; at: number };
 
 const TAU = Math.PI * 2;
 const DPR_MAX = 2;
@@ -282,7 +283,7 @@ for (const character of COMPANION_IDS) {
 type ThemeArt = { bg: HTMLImageElement; ground: HTMLImageElement };
 type SceneLayer = { image: HTMLImageElement | HTMLCanvasElement; depth: number; top: number; height: number };
 type SceneAssets = { sky: HTMLCanvasElement; far: SceneLayer; mid: SceneLayer; near: SceneLayer; ground: HTMLImageElement; prop: HTMLImageElement | null; groundSurface: number; groundHeight: number };
-type AssetState = 'loading' | 'ready' | 'failed';
+type AssetState = 'idle' | 'loading' | 'ready' | 'failed';
 const SCENE_ASSET_PATHS: Record<ThemeName, { sky: string; far: string; mid: string; near: string; ground: string; prop?: string }> = {
   winter: { sky: 'assets/themes/winter/sky.webp', far: 'assets/themes/winter/far-mountains.webp', mid: 'assets/themes/winter/mid-village.webp', near: 'assets/themes/winter/mid-pines.webp', ground: 'assets/themes/winter/ground-front.webp' },
   spring: { sky: 'assets/themes/spring/sky.webp', far: 'assets/themes/spring/far.webp', mid: 'assets/themes/spring/mid.webp', near: 'assets/themes/spring/near.webp', ground: 'assets/themes/spring/ground.webp' },
@@ -296,7 +297,7 @@ const SCENE_LAYOUT: Record<ThemeName, { far: [number, number]; mid: [number, num
   autumn: { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
 };
 const sceneAssets: Partial<Record<ThemeName, SceneAssets>> = {};
-const sceneAssetState: Record<ThemeName, AssetState> = { winter: 'loading', spring: 'loading', summer: 'loading', autumn: 'loading' };
+const sceneAssetState: Record<ThemeName, AssetState> = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
 let groundFrontCache: { key: string; image: HTMLCanvasElement } | null = null;
 const winterReeds = new Image();
 winterReeds.src = 'assets/themes/winter/winter-snow-reeds.webp';
@@ -355,18 +356,14 @@ function softenSkyTop(image: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
-for (const theme of THEME_ORDER) {
+function loadSceneAssets(theme: ThemeName): void {
+  if (sceneAssetState[theme] !== 'idle') return;
+  sceneAssetState[theme] = 'loading';
   const paths = SCENE_ASSET_PATHS[theme];
   const layout = SCENE_LAYOUT[theme];
   const layers = Promise.all([paths.sky, paths.far, paths.mid, paths.near, paths.ground].map(preloadImage));
   const propAsset = paths.prop ? preloadImage(paths.prop).catch(error => { console.warn(`${theme} landmark art unavailable.`, error); return null; }) : Promise.resolve(null);
-  const continuousImages = theme === 'winter'
-    ? [winterContinuousWorld, winterUpperSky, winterStarfield]
-    : [seasonContinuousArt[theme].world, seasonContinuousArt[theme].upper, seasonContinuousArt[theme].starfield];
-  const continuousWorld = Promise.all(continuousImages.map(image => image.decode())).catch(error => {
-    console.warn(`${theme} continuous world unavailable; using the earlier scenery.`, error);
-  });
-  void Promise.all([layers, propAsset, continuousWorld]).then(([[sky, far, mid, near, ground], prop]) => {
+  void Promise.all([layers, propAsset]).then(([[sky, far, mid, near, ground], prop]) => {
     sceneAssets[theme] = {
       sky: softenSkyTop(sky),
       far: { image: far, depth: 0.05, top: layout.far[0], height: layout.far[1] },
@@ -416,8 +413,10 @@ const INTERACTION_ASSET_PATHS: Record<ThemeName, { objects: string; airborne: st
   autumn: { objects: 'assets/themes/autumn/objects-atlas.webp', airborne: 'assets/themes/autumn/airborne-atlas.webp' },
 };
 const interactionAssets: Partial<Record<ThemeName, InteractionAssets>> = {};
-const interactionAssetState: Record<ThemeName, AssetState> = { winter: 'loading', spring: 'loading', summer: 'loading', autumn: 'loading' };
-for (const theme of THEME_ORDER) {
+const interactionAssetState: Record<ThemeName, AssetState> = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
+function loadInteractionAssets(theme: ThemeName): void {
+  if (interactionAssetState[theme] !== 'idle') return;
+  interactionAssetState[theme] = 'loading';
   const paths = INTERACTION_ASSET_PATHS[theme];
   void Promise.all([preloadImage(paths.objects), preloadImage(paths.airborne)]).then(([objects, airborne]) => {
     interactionAssets[theme] = { objects, airborne };
@@ -427,9 +426,16 @@ for (const theme of THEME_ORDER) {
     interactionAssetState[theme] = 'failed';
   });
 }
+function loadSelectedThemeArt(theme: ThemeName): void {
+  loadSceneAssets(theme);
+  loadInteractionAssets(theme);
+  loadContinuousSeason(theme);
+  loadUpperRealm(theme);
+}
 
 function selectedArtLoading(): boolean {
   return interactionAssetState[selectedTheme] === 'loading' || sceneAssetState[selectedTheme] === 'loading'
+    || continuousState[selectedTheme] === 'loading'
     || upperRealmArt[selectedTheme].state === 'loading'
     || (selectedCharacter !== 'zima' && companionArtState[selectedCharacter] === 'loading');
 }
@@ -547,6 +553,7 @@ const savedCharacter = localStorage.getItem('zima-skybells-character') as Charac
 let selectedTheme: ThemeName = THEME_ORDER.includes(savedTheme) ? savedTheme : 'winter';
 let selectedMode: GameMode = savedMode === 'zen' || savedMode === 'expedition' ? savedMode : 'classic';
 let selectedCharacter: CharacterId = CHARACTER_ORDER.includes(savedCharacter) ? savedCharacter : 'zima';
+loadSelectedThemeArt(selectedTheme);
 let themeCardRects: { theme: ThemeName; rect: Rect }[] = [];
 let modeCardRects: { mode: GameMode; rect: Rect }[] = [];
 let titleStartRect: Rect | null = null;
@@ -580,6 +587,7 @@ let scoreHistory: ScoreRecord[] = (() => {
       if (!parsed || !Number.isSafeInteger(r.bounces) || !Number.isSafeInteger(r.multiplier) ||
           !THEME_ORDER.includes(r.theme) || (r.mode !== 'classic' && r.mode !== 'zen' && r.mode !== 'expedition')) return [];
       return [{ score: parsed.score, approximate: Boolean(r.approximate) || parsed.approximate,
+        equipped: r.equipped === true,
         bounces: r.bounces, multiplier: r.multiplier,
         retries: Number.isSafeInteger(r.retries) ? r.retries : undefined, theme: r.theme, mode: r.mode,
         cat: CHARACTER_ORDER.includes(r.cat) ? r.cat : 'zima',
@@ -611,6 +619,8 @@ function closeScoreboard(): void {
 let lastMenuUi = '';
 let lastBoardUi = '';
 function syncDomUi(): void {
+  const inventory = document.querySelector<HTMLElement>('#powerup-bar');
+  if (inventory) inventory.hidden = state === 'title';
   if (menuOverlay) {
     menuOverlay.hidden = state !== 'title' || scoreboardOpen;
     const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}`;
@@ -653,7 +663,8 @@ function syncDomUi(): void {
           p.append(strong, document.createTextNode(value));
           summary.append(p);
         };
-        line('Best', `${formatScore(bestForMode(scoreboardMode))}${bestIsApproximate(scoreboardMode) ? ' (approximate legacy value)' : ''}`);
+        line('Standard best', `${formatScore(bestForMode(scoreboardMode))}${bestIsApproximate(scoreboardMode) ? ' (approximate legacy value)' : ''}`);
+        line('Equipped best', formatScore(bestEquippedForMode(scoreboardMode)));
         if (scoreboardMode === selectedMode) line('Current', formatScore(score));
         if (legacyBest?.score) line('Legacy best, mode unknown', `${formatScore(legacyBest.score)}${legacyBest.approximate ? ' (approximate)' : ''}`);
       }
@@ -670,7 +681,7 @@ function syncDomUi(): void {
           const item = document.createElement('li');
           const meta = document.createElement('span');
           meta.className = 'record-meta';
-          meta.textContent = `#${index + 1} · ${CHARACTER_META[run.cat].name} · ${run.theme.toUpperCase()} · ${run.bounces} bounces · x${run.multiplier}${run.retries !== undefined ? ` · ${run.retries} retries` : ''}${run.approximate ? ' · approximate' : ''}`;
+          meta.textContent = `#${index + 1} · ${run.equipped ? 'EQUIPPED' : 'STANDARD'} · ${CHARACTER_META[run.cat].name} · ${run.theme.toUpperCase()} · ${run.bounces} bounces · x${run.multiplier}${run.retries !== undefined ? ` · ${run.retries} retries` : ''}${run.approximate ? ' · approximate' : ''}`;
           const value = document.createElement('span');
           value.className = 'record-score';
           value.textContent = formatScore(run.score);
@@ -758,14 +769,18 @@ for (const mode of GAME_MODES) {
   const saved = parseStoredScore(localStorage.getItem(`zima-skybells-best-${mode}`));
   if (saved) bestByMode[mode] = saved.score;
 }
-for (const run of scoreHistory) if (run.score > bestByMode[run.mode]) bestByMode[run.mode] = run.score;
+for (const run of scoreHistory) if (!run.equipped && run.score > bestByMode[run.mode]) bestByMode[run.mode] = run.score;
 for (const mode of GAME_MODES) localStorage.setItem(`zima-skybells-best-${mode}`, bestByMode[mode].toString());
 
 function bestForMode(mode: GameMode = selectedMode): bigint { return bestByMode[mode]; }
+function bestEquippedForMode(mode: GameMode = selectedMode): bigint {
+  return scoreHistory.filter(run => run.mode === mode && run.equipped)
+    .reduce((best, run) => run.score > best ? run.score : best, 0n);
+}
 
 function bestIsApproximate(mode: GameMode = selectedMode): boolean {
-  if (mode === selectedMode && score === bestByMode[mode] && score > 0n) return false;
-  return scoreHistory.some(run => run.mode === mode && run.score === bestByMode[mode] && run.approximate);
+  if (mode === selectedMode && !runEquipped && score === bestByMode[mode] && score > 0n) return false;
+  return scoreHistory.some(run => run.mode === mode && !run.equipped && run.score === bestByMode[mode] && run.approximate);
 }
 
 function formatScore(value: bigint): string { return value.toLocaleString('en-US'); }
@@ -806,7 +821,10 @@ function themeMeta(): (typeof THEME_META)[ThemeName] {
 }
 
 function setTheme(theme: ThemeName): void {
+  if (selectedTheme !== theme) releasePreparedSeason(selectedTheme);
   selectedTheme = theme;
+  loadSelectedThemeArt(theme);
+  refreshProgressUi();
   scarfArtCache.clear();
   companionTintCache.clear();
   localStorage.setItem('zima-skybells-theme', theme);
@@ -832,13 +850,21 @@ function setCharacter(character: CharacterId): void {
 function recordScore(): void {
   if (score <= 0n || bellCount <= 0) return;
   if (selectedMode === 'expedition' && state !== 'expeditionComplete') return;
-  if (score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
-  localStorage.setItem(`zima-skybells-best-${selectedMode}`, bestByMode[selectedMode].toString());
-  scoreHistory.push({ score, bounces: bellCount, multiplier,
+  if (!runEquipped) {
+    if (score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
+    localStorage.setItem(`zima-skybells-best-${selectedMode}`, bestByMode[selectedMode].toString());
+  }
+  scoreHistory.push({ score, equipped: runEquipped, bounces: bellCount, multiplier,
     retries: selectedMode === 'expedition' ? expeditionRetries : undefined,
     theme: selectedTheme, mode: selectedMode, cat: selectedCharacter, at: Date.now() });
   scoreHistory.sort((a, b) => a.score === b.score ? b.at - a.at : a.score > b.score ? -1 : 1);
-  scoreHistory = scoreHistory.filter((run, index) => scoreHistory.slice(0, index).filter(other => other.mode === run.mode).length < 40);
+  const recordCounts = new Map<string, number>();
+  scoreHistory = scoreHistory.filter(run => {
+    const track = `${run.mode}:${run.equipped ? 'equipped' : 'standard'}`;
+    const count = recordCounts.get(track) ?? 0;
+    recordCounts.set(track, count + 1);
+    return count < 40;
+  });
   localStorage.setItem('zima-skybells-scores', JSON.stringify(scoreHistory.map(run => ({ ...run, score: run.score.toString() }))));
 }
 
@@ -1181,14 +1207,17 @@ function setReadyState(): void {
 
 function resetGame(): void {
   gameSeed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+  startProgressRun();
   setReadyState();
 }
 
 function launchRun(): void {
   if (state !== 'ready' && state !== 'zenGrounded' && state !== 'expeditionCheckpoint') return;
+  beginLaunchProgress();
   state = 'playing';
   const firstBell = bells.find(b => !b.touched && bellTop(b) > cat.y + 70);
   cat.vy = firstBell ? jumpVelocityFor(cat.y, cat.x, firstBell) : PHYS.firstBounce;
+  if (runCampBoost) cat.vy = Math.min(1600, cat.vy + 80);
   cat.prevY = cat.y;
   descentPeakY = cat.y;
   setAnimState('launch');
@@ -1312,6 +1341,7 @@ function extendPath(): void {
     x = Math.max(w * 0.75 + 22, Math.min(width - w * 0.75 - 22, x));
     const next = makeBell(x, y, w, ordinal);
     bells.push(next);
+    maybePlaceCrate(lastBell, next);
     if (ordinal >= nextBonusBell) {
       maybeSpawnMoth(lastBell.y + gap * rand(0.38, 0.68), ordinal);
       nextBonusBell += Math.floor(rand(ordinal < 120 ? 20 : 18, ordinal < 120 ? 27 : 24));
@@ -1491,6 +1521,7 @@ function togglePause(): void {
 
 function update(dt: number): void {
   if (scoreboardOpen) { if (!paused) updateMusic(); return; }
+  if (!paused) updateProgressEffects(dt);
   elapsed += dt;
   updateSnow(dt);
   if (!paused) updateMusic();
@@ -1526,6 +1557,9 @@ function update(dt: number): void {
     if (Math.abs(dx) < 18) desired = 0;
   }
 
+  if (progress.movement === 'windstep') desired *= 1.08;
+  if (progress.movement === 'softstep' && (keys.has('ShiftLeft') || keys.has('ShiftRight'))) desired *= 0.45;
+  if (runEchoTime > 0) desired *= 1.14;
   cat.vx = desired;
   if (Math.abs(cat.vx) > 42) {
     const nextFacing = cat.vx >= 0 ? 1 : -1;
@@ -1548,6 +1582,7 @@ function update(dt: number): void {
   }
 
   highestY = Math.max(highestY, cat.y);
+  if (state === 'playing') updateAltitudeRewards();
   if (state === 'playing' && cat.vy >= 0) descentPeakY = cat.y;
 
   if (bounceHold > 0) {
@@ -1572,7 +1607,7 @@ function update(dt: number): void {
   descentBlend = sustainedDescent ? Math.min(1, descentBlend + dt / 0.65)
     : Math.max(0, descentBlend - dt * 4);
   const fallCap = 1900 + (descentSpeedLimit(cat.y) - 1900) * chapterEase(descentBlend);
-  cat.vy = Math.max(-fallCap, cat.vy + PHYS.gravity * dt);
+  cat.vy = Math.max(-fallCap * (runSoftfallTime > 0 ? 0.92 : 1), cat.vy + PHYS.gravity * dt);
   cat.x += cat.vx * dt;
   cat.y += cat.vy * dt;
   highestY = Math.max(highestY, cat.y);
@@ -1584,6 +1619,7 @@ function update(dt: number): void {
   if (state === 'playing') {
     checkBellContacts();
     checkMoths();
+    updateCrates();
     if (selectedMode === 'expedition') {
       advanceExpedition();
       if ((state as GameState) === 'expeditionComplete') return;
@@ -1598,7 +1634,7 @@ function update(dt: number): void {
       cat.y = GROUND_Y;
       cat.vy = 0;
       cameraY = 0;
-      finishGame();
+      if (!tryCatBedRescue()) finishGame();
       return;
     }
     if (selectedMode === 'expedition' && cat.y <= expeditionCheckpointY) {
@@ -1614,6 +1650,7 @@ function update(dt: number): void {
     const previousContacts = bellCount + mothCount;
     checkBellContacts();
     checkMoths();
+    updateCrates();
     if (bellCount + mothCount > previousContacts) {
       state = 'playing';
       descentPeakY = cat.y;
@@ -1633,7 +1670,7 @@ function update(dt: number): void {
       cat.y = GROUND_Y;
       cat.vy = 0;
       cameraY = 0;
-      finishGame();
+      if (!tryCatBedRescue()) finishGame();
     }
   }
 }
@@ -1673,6 +1710,7 @@ function advanceExpedition(): void {
   const goals = expeditionGoals();
   while (expeditionStage < goals.length && highestY >= goals[expeditionStage]) {
     expeditionStage++;
+    rewardExpeditionStage(expeditionStage);
     if (expeditionStage <= 2) expeditionCheckpointY = goals[expeditionStage - 1];
   }
   if (expeditionStage === 3) finishExpedition();
@@ -1747,6 +1785,7 @@ function settleZenGround(): void {
 }
 
 function registerBellHit(bell: Bell, fromBelow: boolean): void {
+  const firstContact = runFirstBell;
   bell.touched = true;
   descentBlend = 0;
   bell.lastHit = elapsed;
@@ -1765,18 +1804,22 @@ function registerBellHit(bell: Bell, fromBelow: boolean): void {
       1180 + bell.boost * 0.70,
     );
     cat.vy = Math.min(1680, automaticBoost);
+    if (firstContact && progress.enchantment === 'bellwake') cat.vy = Math.min(1680, cat.vy * 1.05);
     setAnimState('undersideContact');
     contactAnimHold = 0.12;
   } else {
     cat.y = top;
     const targetBounce = nextBell ? jumpVelocityFor(top, bell.x, nextBell) : PHYS.bounce;
     pendingBounce = Math.min(1640, targetBounce + chainBoost + bell.boost);
+    if (firstContact && progress.enchantment === 'bellwake') pendingBounce = Math.min(1640, pendingBounce * 1.05);
     cat.vy = 0;
     bounceHold = 0.045;
     cat.landedFlash = bounceHold;
     setAnimState('land');
     contactAnimHold = 0.12;
   }
+  runFirstBell = false;
+  if (firstContact && progress.enchantment === 'bellwake') addSeasonBurst(bell.x, top, 0.7);
 
   if (!bell.scored) {
     bell.scored = true;
@@ -1849,11 +1892,15 @@ function checkBellContacts(): void {
 function beginLongFall(): void {
   if (state !== 'playing') return;
   state = 'falling';
+  if (progress.enchantment === 'softfall') runSoftfallTime = 1;
+  if (progress.utility === 'echo' && !runEchoUsed) {
+    runEchoUsed = true; runEchoTime = 1.2;
+    message = 'ECHO CHARM · STEER NOW'; messageTimer = 1.2;
+  }
   bounceHold = 0;
   pendingBounce = 0;
   bounceChain = 0;
-  message = 'MISSED — FALLING HOME';
-  messageTimer = 1.8;
+  if (runEchoTime <= 0) { message = 'MISSED — FALLING HOME'; messageTimer = 1.8; }
   setAnimState('fall');
   ping(260, 0.03, 0.18, 'sine');
 }
@@ -1868,6 +1915,7 @@ function checkMoths(): void {
       moth.alive = false;
       descentBlend = 0;
       mothCount++;
+      rewardBirdCatch();
       awardPoints(tierPoints(moth.kind));
       multiplier = Math.min(20, multiplier + 1);
       bounceHold = 0;
@@ -2576,8 +2624,10 @@ function drawWorld(): void {
     if (y < -80 || y > height + 80) continue;
     drawMoth(moth.x, y + Math.sin(moth.phase) * 6, moth.phase, moth.vx, moth.kind);
   }
+  drawCrates();
   drawEffects();
   if (cameraY < 90 && !sceneAssets[selectedTheme]) drawLaunchPad(cat.x, worldToScreenY(GROUND_Y) + 2);
+  drawProgressEffects();
   drawCat(cat.x, worldToScreenY(cat.y), cat.vx, cat.vy);
 }
 
@@ -3287,26 +3337,23 @@ function drawHUD(): void {
     ctx.fillStyle = themeMeta().accent;
     ctx.fillText(message, width / 2, Math.max(150, height * 0.19));
   }
-  const controlsX = width >= 620 ? Math.max(282, width - 390) : 18;
-  const controlsY = width >= 620 ? 18 : 128;
-  const controlsW = Math.min(372, width - controlsX - 18);
-  ctx.fillStyle = 'rgba(4,18,30,.96)';
-  ctx.beginPath(); ctx.roundRect(controlsX, controlsY, controlsW, 76, 16); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.stroke();
-  ctx.textAlign = 'left';
+  // Text sits directly on the painting. A dark outline and light shadow keep
+  // it legible over both pale daytime skies and the dark winter starfield.
+  const controlsX = width - 18;
+  const controlsY = width >= 850 ? 29 : 204;
+  ctx.textAlign = 'right';
   ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
-  ctx.fillStyle = '#f3fbff';
-  ctx.fillText(`${selectedMode.toUpperCase()}  ·  L Scores  ·  P ${paused ? 'Resume' : 'Pause'}`, controlsX + 12, controlsY + 29, controlsW - 105);
-  ctx.fillText(`M Music ${muted ? 'off' : 'on'}  ·  R Restart`, controlsX + 12, controlsY + 56, controlsW - 105);
-  menuRect = { x: controlsX + controlsW - 88, y: controlsY + 19, w: 76, h: 40 };
-  ctx.fillStyle = '#f3fbff';
-  ctx.beginPath(); ctx.roundRect(menuRect.x, menuRect.y, menuRect.w, menuRect.h, 11); ctx.fill();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#081c2c';
-  ctx.font = '800 13px ui-rounded, system-ui, sans-serif';
-  ctx.fillText('MENU', menuRect.x + menuRect.w / 2, menuRect.y + 17);
-  ctx.font = '600 10px ui-rounded, system-ui, sans-serif';
-  ctx.fillText('Esc', menuRect.x + menuRect.w / 2, menuRect.y + 31);
+  ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(2,12,22,.95)';
+  ctx.shadowColor = 'rgba(1,9,18,.8)'; ctx.shadowBlur = 5;
+  const line1 = `${selectedMode.toUpperCase()} · L Scores · P ${paused ? 'Resume' : 'Pause'} · Esc Menu`;
+  const line2 = `M Music ${muted ? 'off' : 'on'} · R Restart`;
+  ctx.strokeText(line1, controlsX, controlsY);
+  ctx.strokeText(line2, controlsX, controlsY + 25);
+  ctx.fillStyle = '#fffdf5';
+  ctx.fillText(line1, controlsX, controlsY);
+  ctx.fillText(line2, controlsX, controlsY + 25);
+  menuRect = { x: controlsX - 82, y: controlsY - 16, w: 82, h: 23 };
   ctx.restore();
 }
 
@@ -3608,7 +3655,7 @@ function drawScoreboard(): void {
   }
   ctx.fillStyle = 'rgba(225,240,248,.75)';
   ctx.font = '600 12px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(`${scoreboardMode.toUpperCase()} BEST${bestIsApproximate(scoreboardMode) ? ' · APPROXIMATE LEGACY VALUE' : ''}`, x + 22, y + 67);
+  ctx.fillText(`${scoreboardMode.toUpperCase()} STANDARD BEST${bestIsApproximate(scoreboardMode) ? ' · APPROXIMATE LEGACY VALUE' : ''}`, x + 22, y + 67);
   ctx.fillStyle = '#f4fbff';
   let contentY = drawDecimal(bestForMode(scoreboardMode), x + 22, y + 88, w - 44,
     '700 17px ui-rounded, system-ui, sans-serif', 20);
@@ -3650,7 +3697,7 @@ function drawScoreboard(): void {
     ctx.beginPath(); ctx.roundRect(x + 18, rowY, w - 36, rh - 5, 10); ctx.fill();
     ctx.fillStyle = themeMeta().accent;
     ctx.font = '700 12px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`#${rank}  ${record.theme.toUpperCase()}  ·  ${record.bounces} BOUNCES  ·  x${record.multiplier}${record.retries !== undefined ? `  ·  ${record.retries} RETRIES` : ''}${record.approximate ? '  ·  LEGACY APPROX.' : ''}`, x + 30, rowY + 19, w - 56);
+    ctx.fillText(`#${rank}  ${record.equipped ? 'EQUIPPED' : 'STANDARD'}  ·  ${record.theme.toUpperCase()}  ·  ${record.bounces} BOUNCES  ·  x${record.multiplier}${record.retries !== undefined ? `  ·  ${record.retries} RETRIES` : ''}${record.approximate ? '  ·  LEGACY APPROX.' : ''}`, x + 30, rowY + 19, w - 56);
     ctx.fillStyle = '#f5fbff';
     drawDecimal(record.score, x + 30, rowY + 43, w - 66,
       '700 17px ui-rounded, system-ui, sans-serif', 20);
@@ -4121,4 +4168,5 @@ function frame(now: number): void {
 }
 
 resize();
+initProgressionUi();
 requestAnimationFrame(frame);

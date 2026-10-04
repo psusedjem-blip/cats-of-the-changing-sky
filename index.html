@@ -16,7 +16,8 @@
       <fieldset><legend>Season</legend><div id="season-options" class="season-options"></div></fieldset>
       <fieldset><legend>Play mode</legend><div id="mode-options" class="mode-options"></div></fieldset>
       <p id="menu-description" class="menu-description"></p>
-      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button></div>
+      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button></div>
+      <p class="fish-wallet"><img src="assets/progression/fish.webp" alt="" /> <span id="fish-balance">0</span> fish</p>
       <div class="audio-levels" role="group" aria-label="Audio levels"><label>Music <input id="music-level" type="range" min="0" max="100" step="5" value="100"></label><label>Effects <input id="effects-level" type="range" min="0" max="100" step="5" value="100"></label></div>
       <p id="menu-best" class="menu-best"></p>
       <p class="menu-help">Move with A/D, arrow keys, or mouse. Space or Enter launches. Esc returns here.</p>
@@ -30,6 +31,24 @@
       <ol id="board-records" class="board-records" tabindex="0" aria-label="Score records"></ol>
     </div>
   </section>
-  <script src="main.js?v=3.34.26"></script>
+  <div id="powerup-bar" class="powerup-bar" aria-label="Power-up inventory"></div>
+  <button id="settings-button" class="settings-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
+  <section id="shop-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title" hidden>
+    <div class="ui-panel shop-panel">
+      <header class="dialog-header"><h2 id="shop-title">Gear &amp; supplies</h2><button id="close-shop" type="button">Close</button></header>
+      <p class="fish-wallet"><img src="assets/progression/fish.webp" alt="" /> <span id="shop-balance">0</span> fish available</p>
+      <p>Earn fish by climbing, catching airborne visitors, and opening mystery crates. Gear stays yours; supplies are used once.</p>
+      <div id="shop-items" class="shop-items"></div>
+    </div>
+  </section>
+  <section id="settings-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="ui-panel settings-panel">
+      <header class="dialog-header"><h2 id="settings-title">Settings</h2><button id="close-settings" type="button">Close</button></header>
+      <p>Save a copy of this browser's scores, settings, fish, gear, and supplies.</p>
+      <button id="export-save" type="button">Export game data</button>
+      <button id="reroll-route" type="button">Use Route Reroll at camp</button>
+    </div>
+  </section>
+  <script src="main.js?v=3.35.0"></script>
 </body>
 </html>

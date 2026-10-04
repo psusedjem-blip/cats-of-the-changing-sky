@@ -2,6 +2,7 @@
 
 import json
 import argparse
+import atexit
 from pathlib import Path
 import re
 import zipfile
@@ -13,6 +14,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--store", action="store_true", help="Place manifest.json at ZIP root for browser store upload")
 args = parser.parse_args()
 OUTPUT = ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}{'-store' if args.store else ''}.zip"
+TEMP_OUTPUT = OUTPUT.with_name(OUTPUT.name + ".tmp")
+atexit.register(lambda: TEMP_OUTPUT.unlink(missing_ok=True))
 # Keep the original extracted directory so an unpacked-extension update uses
 # the same path and Chrome can retain its local scores and settings.
 PREFIX = "" if args.store else "zima-skybells-extension/"
@@ -39,7 +42,7 @@ files = [ROOT / name for name in (
     "assets/zima-fall-pose.png",
     "assets/zima-fall-tuck.png",
 )]
-folders = ["assets/themes", "assets/seasonal", "assets/characters", "icons"]
+folders = ["assets/themes", "assets/seasonal", "assets/characters", "assets/progression", "icons"]
 for folder in folders:
     files.extend(path for path in (ROOT / folder).rglob("*") if path.is_file())
 
@@ -47,21 +50,25 @@ for path in files:
     if not path.is_file():
         raise FileNotFoundError(path)
 
-with zipfile.ZipFile(OUTPUT, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+with zipfile.ZipFile(TEMP_OUTPUT, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
     for path in sorted(set(files)):
         archive.write(path, PREFIX + path.relative_to(ROOT).as_posix())
 
-with zipfile.ZipFile(OUTPUT) as archive:
+with zipfile.ZipFile(TEMP_OUTPUT) as archive:
     if bad_file := archive.testzip():
         raise RuntimeError(f"Corrupt archive member: {bad_file}")
-    assert PREFIX + "assets/zima-animation-atlas-256.png" not in archive.namelist()
-    assert len(archive.namelist()) == len(set(archive.namelist()))
-    assert not any(name.endswith(".md") or "/media/" in name or "/docs/" in name for name in archive.namelist())
+    if PREFIX + "assets/zima-animation-atlas-256.png" in archive.namelist():
+        raise RuntimeError("Unneeded source atlas was included")
+    if len(archive.namelist()) != len(set(archive.namelist())):
+        raise RuntimeError("Archive contains duplicate members")
+    if any(name.endswith(".md") or "/media/" in name or "/docs/" in name for name in archive.namelist()):
+        raise RuntimeError("Archive contains documentation or media")
     if args.store:
-        assert "manifest.json" in archive.namelist()
-        assert "README.md" not in archive.namelist()
+        if "manifest.json" not in archive.namelist() or "README.md" in archive.namelist():
+            raise RuntimeError("Store archive layout is invalid")
     else:
-        assert PREFIX + "manifest.json" in archive.namelist()
+        if PREFIX + "manifest.json" not in archive.namelist():
+            raise RuntimeError("Sideload archive layout is invalid")
     html = archive.read(PREFIX + "index.html").decode("utf-8")
     if f'main.js?v={VERSION}' not in html:
         raise RuntimeError("Preview page script version differs from manifest")
@@ -107,4 +114,15 @@ with zipfile.ZipFile(OUTPUT) as archive:
     if missing_character_assets:
         raise RuntimeError(f"Missing character pose assets: {missing_character_assets}")
 
-print(f"{OUTPUT} ({OUTPUT.stat().st_size:,} bytes; {len(files)} files; {len(asset_refs)} static, {len(terrain_assets)} terrain, {len(continuous_assets)} continuous-world, and {len(dynamic_character_assets)} character references checked)")
+    progression_assets = [
+        f"assets/progression/{name}.webp"
+        for name in ("fish", "crate", "cat-bed", "windstep-boots", "softstep-boots",
+                     "aurora-compass", "echo-charm", "bellwake", "softfall",
+                     "camp-provision", "route-reroll")
+    ]
+    missing_progression = [ref for ref in progression_assets if PREFIX + ref not in archive.namelist()]
+    if missing_progression:
+        raise RuntimeError(f"Missing progression art: {missing_progression}")
+
+TEMP_OUTPUT.replace(OUTPUT)
+print(f"{OUTPUT} ({OUTPUT.stat().st_size:,} bytes; {len(files)} files; {len(asset_refs)} static, {len(terrain_assets)} terrain, {len(continuous_assets)} continuous-world, {len(dynamic_character_assets)} character, and {len(progression_assets)} progression references checked)")

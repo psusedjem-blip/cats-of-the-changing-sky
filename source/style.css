@@ -1,6 +1,0 @@
-/* Source copy of the extension stylesheet. The packaged build uses ../style.css. */
-:root { color-scheme: dark; font-family: Inter, ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; }
-* { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #071523; }
-body { user-select: none; -webkit-user-select: none; }
-canvas { display: block; width: 100vw; height: 100vh; outline: none; cursor: crosshair; touch-action: none; }

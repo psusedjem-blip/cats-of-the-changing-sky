@@ -15,6 +15,7 @@ assets/zima-winter-cap.png
 
 # Generated packages and local tooling.
 *.zip
+*.zip.tmp
 node_modules/
 __pycache__/
 *.pyc
