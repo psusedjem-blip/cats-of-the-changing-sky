@@ -20,31 +20,66 @@ atexit.register(lambda: TEMP_OUTPUT.unlink(missing_ok=True))
 # the same path and Chrome can retain its local scores and settings.
 PREFIX = "" if args.store else "zima-skybells-extension/"
 
-files = [ROOT / name for name in (
+# The ZIP is an allowlist. Art masters, review captures, and superseded assets
+# may live beside the project without becoming part of an installed extension.
+runtime_assets = {
     "manifest.json", "background.js", "index.html", "main.js", "style.css",
-    "assets/zima-animation-clean-atlas.webp", "assets/zima-turn-pose.webp",
-    "assets/zima-idle-four-keys.webp",
-    "assets/zima-turn-front.webp",
-    "assets/zima-turn-middle.webp",
-    "assets/zima-idle-sixteen.webp",
-    "assets/zima-walk-sixteen.webp",
-    "assets/zima-crouch-sixteen.webp",
-    "assets/zima-launch-sixteen.webp",
-    "assets/zima-rise-sixteen.webp",
-    "assets/zima-apex-sixteen.webp",
-    "assets/zima-fall-sixteen.webp",
-    "assets/zima-contact-sixteen.webp",
-    "assets/zima-side-contact-sixteen.webp",
-    "assets/zima-land-sixteen.webp",
-    "assets/zima-top-contact.webp",
-    "assets/zima-underside-contact.webp",
-    "assets/zima-airborne-boost.webp",
-    "assets/zima-fall-pose.png",
-    "assets/zima-fall-tuck.png",
-)]
-folders = ["assets/themes", "assets/seasonal", "assets/characters", "assets/progression", "icons"]
-for folder in folders:
-    files.extend(path for path in (ROOT / folder).rglob("*") if path.is_file())
+}
+zima_poses = (
+    "animation-clean-atlas.webp", "turn-pose.webp", "idle-four-keys.webp",
+    "turn-front.webp", "turn-middle.webp", "idle-sixteen.webp",
+    "walk-sixteen.webp", "crouch-sixteen.webp", "launch-sixteen.webp",
+    "rise-sixteen.webp", "apex-sixteen.webp", "fall-sixteen.webp",
+    "contact-sixteen.webp", "side-contact-sixteen.webp", "land-sixteen.webp",
+    "top-contact.webp", "underside-contact.webp", "airborne-boost.webp",
+    "fall-pose.png", "fall-tuck.png",
+)
+runtime_assets.update(f"assets/characters/zima/{pose}" for pose in zima_poses)
+
+companion_poses = (
+    "apex-keys.webp", "apex.webp", "boost-contact.webp",
+    "contact.png", "crouch-keys.webp", "fall-keys.webp", "fall-tuck.webp",
+    "fall.png", "idle-sixteen.webp", "idle.png", "land.png",
+    "launch-keys.webp", "launch.webp", "recover.webp", "rise-keys.webp",
+    "rise.png", "side-contact.webp", "top-contact.webp", "turn.webp",
+    "underside-contact.webp", "walk-keys.webp", "walk-sixteen.webp", "walk.png",
+)
+cats = ("zima", "earl-grey", "betty-davis", "gracie-bell")
+for cat in cats[1:]:
+    runtime_assets.update(f"assets/characters/{cat}/{pose}" for pose in companion_poses)
+
+progression_art = (
+    "fish", "crate", "cat-bed", "windstep-boots", "softstep-boots",
+    "aurora-compass", "echo-charm", "bellwake", "softfall",
+    "camp-provision", "route-reroll",
+)
+runtime_assets.update(f"assets/progression/{name}.webp" for name in progression_art)
+for season in ("winter", "spring", "summer", "autumn"):
+    runtime_assets.update(f"assets/seasonal/{season}-painted-{part}.png"
+                          for part in ("bg", "ground"))
+    runtime_assets.update(f"assets/themes/{season}/{season}-{part}.webp"
+                          for part in ("bridge", "high-terrain"))
+    runtime_assets.update(f"assets/themes/{season}/{season}-{part}-v1.png"
+                          for part in ("continuous-world", "upper-sky", "starfield"))
+    runtime_assets.update(f"assets/themes/{season}/{name}.webp"
+                          for name in ("airborne-atlas", "objects-atlas", "sky", "upper-foothold"))
+    if season == "winter":
+        runtime_assets.update(f"assets/themes/winter/{name}.webp" for name in (
+            "far-mountains", "ground-front", "mid-pines", "mid-village", "winter-snow-reeds"))
+        runtime_assets.add("assets/themes/winter/winter-mid-terrain-v2.png")
+    else:
+        runtime_assets.update(f"assets/themes/{season}/{name}.webp"
+                              for name in ("far", "ground", "mid", "near", f"{season}-mid-terrain"))
+        runtime_assets.add(f"assets/themes/{season}/" + {
+            "spring": "spring-flower-bank",
+            "summer": "windmill-prop",
+            "autumn": "scarecrow-prop",
+        }[season] + ".webp")
+
+for size in (16, 32, 48, 128):
+    runtime_assets.add(f"icons/icon{size}.png")
+    runtime_assets.update(f"icons/cats/{cat}-{size}.png" for cat in cats)
+files = [ROOT / name for name in sorted(runtime_assets)]
 
 for path in files:
     if not path.is_file():
@@ -57,7 +92,7 @@ with zipfile.ZipFile(TEMP_OUTPUT, "w", compression=zipfile.ZIP_DEFLATED, compres
 with zipfile.ZipFile(TEMP_OUTPUT) as archive:
     if bad_file := archive.testzip():
         raise RuntimeError(f"Corrupt archive member: {bad_file}")
-    if PREFIX + "assets/zima-animation-atlas-256.png" in archive.namelist():
+    if any(name.endswith("animation-atlas-256.png") for name in archive.namelist()):
         raise RuntimeError("Unneeded source atlas was included")
     if len(archive.namelist()) != len(set(archive.namelist())):
         raise RuntimeError("Archive contains duplicate members")
@@ -87,8 +122,11 @@ with zipfile.ZipFile(TEMP_OUTPUT) as archive:
     terrain_assets = [
         f"assets/themes/{season}/{season}-{stage}.webp"
         for season in ("winter", "spring", "summer", "autumn")
-        for stage in ("bridge", "mid-terrain", "high-terrain")
+        for stage in ("bridge", "high-terrain")
     ]
+    terrain_assets += ["assets/themes/winter/winter-mid-terrain-v2.png"]
+    terrain_assets += [f"assets/themes/{season}/{season}-mid-terrain.webp"
+                       for season in ("spring", "summer", "autumn")]
     missing_terrain = [ref for ref in terrain_assets if PREFIX + ref not in archive.namelist()]
     if missing_terrain:
         raise RuntimeError(f"Missing seasonal terrain assets: {missing_terrain}")

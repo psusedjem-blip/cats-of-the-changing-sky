@@ -10,7 +10,7 @@ The game opens in its own browser tab when you click the extension icon. It has 
 
 | Cat | In the game |
 | --- | --- |
-| <img src="assets/zima-turn-pose.webp" alt="Zima, a cream-colored cat in a blue scarf" width="112"> **Zima** | A bright adventurer with a blue scarf. |
+| <img src="assets/characters/zima/turn-pose.webp" alt="Zima, a cream-colored cat in a blue scarf" width="112"> **Zima** | A bright adventurer with a blue scarf. |
 | <img src="assets/characters/earl-grey/idle.png" alt="Earl Grey, a striped tabby in a green scarf" width="112"> **Earl Grey** | A sturdy striped explorer. |
 | <img src="assets/characters/betty-davis/idle.png" alt="Betty Davis, a pale cat with a lavender bow" width="112"> **Betty Davis** | A petite wanderer with a lavender bow. |
 | <img src="assets/characters/gracie-bell/idle.png" alt="Gracie Bell, a slender tabby in a golden scarf" width="112"> **Gracie Bell** | A graceful climber. |
@@ -81,7 +81,7 @@ The character and scenery art was **generated with AI**, then selected, revised,
 
 ## Beta source and build
 
-The `main` branch is the stable game. Work on this `beta` branch remains separate until it is ready for a stable release. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit `source/main.ts`, `source/chapters.ts`, and `source/progression.ts`; `main.js` is generated. The runtime stylesheet is `style.css`.
+The `main` branch is the stable game. Work on this `beta` branch remains separate until it is ready for a stable release. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
 
 Install Node.js and Python 3, then run `npm ci` and `npm run check`. `npm run build` compiles TypeScript. `npm run package:store` builds the store ZIP with `manifest.json` at its root; `npm run package:sideload` builds the GitHub ZIP with an enclosing extension folder. The packaging script checks archive integrity and asset references before replacing a release ZIP. Review each cat, season, and mode in a browser before distributing a beta package.
 

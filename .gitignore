@@ -4,14 +4,11 @@ art-source/
 review/
 docs/
 media/
+Unused Art/
 *.md
 !README.md
 scripts/*
 !scripts/package-extension.py
-
-# Large unused source atlas; the runtime uses the clean WebP atlas.
-assets/zima-animation-atlas-256.png
-assets/zima-winter-cap.png
 
 # Generated packages and local tooling.
 *.zip

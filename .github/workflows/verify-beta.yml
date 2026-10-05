@@ -1,0 +1,29 @@
+name: Verify beta build
+
+on:
+  push:
+    branches: [beta]
+  pull_request:
+    branches: [beta, main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package:store
+      - run: npm run package:sideload
+      - name: Confirm generated game script is committed
+        run: git diff --exit-code -- main.js
