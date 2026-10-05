@@ -82,12 +82,15 @@ function ensureAudio(): void {
   masterGain.connect(audioCtx.destination);
   musicGain = audioCtx.createGain(); musicGain.gain.value = 0.87 * musicLevel; musicGain.connect(masterGain);
   effectsGain = audioCtx.createGain(); effectsGain.gain.value = 0.94 * effectsLevel; effectsGain.connect(masterGain);
-  brushBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.13), audioCtx.sampleRate);
+  brushBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.36), audioCtx.sampleRate);
   const samples = brushBuffer.getChannelData(0);
   let noiseSeed = 0x62a5d;
+  let softened = 0;
   for (let i = 0; i < samples.length; i++) {
     noiseSeed = (Math.imul(noiseSeed, 1664525) + 1013904223) >>> 0;
-    samples[i] = (noiseSeed / 2147483648 - 1) * (1 - i / samples.length);
+    softened += ((noiseSeed / 2147483648 - 1) - softened) * 0.16;
+    const taper = Math.sin(Math.PI * i / (samples.length - 1)) ** 2;
+    samples[i] = softened * taper;
   }
   musicNext = audioCtx.currentTime + 0.18;
   musicBar = 0;
@@ -204,9 +207,9 @@ function schedulePixelPluck(note: number, when: number, duration = 0.20, level =
   voice.type = 'square';
   voice.frequency.setValueAtTime(midiToHz(note), when);
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(1500, when);
+  filter.frequency.setValueAtTime(1350, when);
   gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(level, when + 0.009);
+  gain.gain.exponentialRampToValueAtTime(level, when + 0.022);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
   voice.connect(filter).connect(gain).connect(musicGain!);
   voice.start(when); voice.stop(when + duration + 0.03);
@@ -218,12 +221,12 @@ function scheduleBrush(when: number, level = 0.0025): void {
   const filter = audioCtx.createBiquadFilter();
   const gain = audioCtx.createGain();
   source.buffer = brushBuffer;
-  filter.type = 'highpass'; filter.frequency.setValueAtTime(1600, when);
+  filter.type = 'bandpass'; filter.frequency.setValueAtTime(850, when); filter.Q.value = 0.45;
   gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.exponentialRampToValueAtTime(level, when + 0.007);
-  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.11);
+  gain.gain.exponentialRampToValueAtTime(level * 0.55, when + 0.09);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.34);
   source.connect(filter).connect(gain).connect(musicGain!);
-  source.start(when); source.stop(when + 0.12);
+  source.start(when); source.stop(when + 0.35);
 }
 
 function scheduleMallet(note: number, when: number, duration = 0.50, level = 0.010): void {
@@ -282,6 +285,7 @@ function scheduleWinterBar(bar: number, when: number): number {
   scheduleCello(p.root, when, barLen * 0.96, phrase === 3 || musicDescending ? 0.010 : 0.014);
   if (phrase === 1 && bar % 2 === 0) scheduleCello(p.root + 7, when + eighth * 3, eighth * 2.8, 0.006);
   scheduleWarmPad(p.chord[2], when, barLen * 0.96, 0.006 + musicLift * 0.002);
+  scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.82, 0.0028);
   if (phrase === 2 && bar % 2 === 1) schedulePixelPluck(p.chord[3] + 12, when + eighth * 5, 0.18, 0.004);
   return barLen;
 }
@@ -305,6 +309,7 @@ function scheduleSpringBar(bar: number, when: number): number {
   if (bar % 4 === 2) scheduleChime(p.melody[2], when + eighth * 4.1, 0.40, 0.009);
   scheduleCello(p.root, when, barLen * 0.95, 0.009);
   scheduleWarmPad(p.chord[2], when, barLen * 0.94, 0.005 + musicLift * 0.002);
+  scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.80, 0.0026);
   if (phrase === 1 && bar % 2 === 1) schedulePixelPluck(p.chord[3] + 12, when + eighth * 4.5, 0.16, 0.004);
   return barLen;
 }
@@ -328,6 +333,7 @@ function scheduleSummerBar(bar: number, when: number): number {
   scheduleCello(p.root, when, barLen * 0.92, 0.010);
   if (phrase === 1 && bar % 2 === 0) scheduleCello(p.root + 7, when + eighth * 3, barLen * 0.42, 0.005);
   scheduleWarmPad(p.chord[2], when, barLen * 0.90, 0.005 + musicLift * 0.002);
+  scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.78, 0.0025);
   if (phrase === 2 && bar % 2 === 0) schedulePixelPluck(p.chord[3] + 12, when + eighth * 5, 0.18, 0.005);
   return barLen;
 }
@@ -350,6 +356,7 @@ function scheduleAutumnBar(bar: number, when: number): number {
   if (bar % 4 === 1 || bar % 4 === 2) schedulePiano(p.melody[1] + 12, when + eighth * 4.6, 0.54, 0.009);
   scheduleCello(p.root, when, barLen * 0.98, phrase === 3 || musicDescending ? 0.009 : 0.013);
   scheduleWarmPad(p.chord[2], when, barLen * 0.96, 0.006 + musicLift * 0.001);
+  scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.82, 0.0027);
   if (phrase === 1 && bar % 2 === 1) schedulePixelPluck(p.chord[1] + 12, when + eighth * 2.5, 0.19, 0.004);
   return barLen;
 }

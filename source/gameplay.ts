@@ -213,6 +213,7 @@ function settleExpeditionCheckpoint(): void {
   const nextOrdinal = (bells.at(-1)?.id ?? bellCount) + 1;
   bells = [];
   moths = [];
+  runCrates = [];
   nextBonusBell = nextOrdinal + 17;
   generateInitialPath(nextOrdinal, expeditionCheckpointY + 205);
   setAnimState('groundLand');
@@ -255,6 +256,7 @@ function settleZenGround(): void {
   const nextOrdinal = (bells.at(-1)?.id ?? bellCount) + 1;
   bells = [];
   moths = [];
+  runCrates = [];
   fieldDrop = 0;
   nextBonusBell = nextOrdinal + 17;
   generateInitialPath(nextOrdinal);

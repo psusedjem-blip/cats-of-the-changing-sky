@@ -597,7 +597,13 @@ let runCampBoost = false;
 let catBedArmed = false;
 let campProvisionArmed = false;
 let runCrates = [];
-let nextCrateOrdinal = 12;
+// Crates follow world height rather than target IDs. Route rebuilds can jump
+// target IDs, so ordinal scheduling used to create a dense row of crates.
+let nextCrateWorldY = 0;
+const FIRST_CRATE_MIN_Y = 8000;
+const FIRST_CRATE_MAX_Y = 10500;
+const CRATE_GAP_MIN_Y = 12500;
+const CRATE_GAP_MAX_Y = 17000;
 function startProgressRun() {
     runHighestBand = 0;
     runHighBand = 0;
@@ -614,7 +620,7 @@ function startProgressRun() {
     catBedArmed = false;
     campProvisionArmed = false;
     runCrates = [];
-    nextCrateOrdinal = 12;
+    nextCrateWorldY = rand(FIRST_CRATE_MIN_Y, FIRST_CRATE_MAX_Y);
 }
 function awardFish(amount, reason) {
     if (amount <= 0)
@@ -728,13 +734,23 @@ function grantCrateReward(id) {
     messageTimer = 2;
 }
 function maybePlaceCrate(previous, next) {
-    if (next.id < nextCrateOrdinal)
+    const previousY = bellWorldY(previous);
+    const nextY = bellWorldY(next);
+    if (nextY < nextCrateWorldY)
         return;
-    nextCrateOrdinal += Math.floor(rand(13, 20));
-    const candidates = [...GEAR_IDS, ...ENCHANTMENT_IDS, ...SUPPLY_IDS, 'fish'];
-    const offered = [0, 1, 2, 3].map(() => candidates[Math.floor(rand(0, candidates.length))]);
-    runCrates.push({ x: Math.max(75, Math.min(width - 75, previous.x + rand(-65, 65))),
-        y: previous.y - fieldDrop + (next.y - previous.y) * rand(0.45, 0.65), born: elapsed, opened: false, offered });
+    // A route can resume above a scheduled height. Advance from the actual
+    // placement so the next target cannot also receive a crate.
+    const y = previousY + (nextY - previousY) * rand(0.44, 0.59);
+    nextCrateWorldY = y + rand(CRATE_GAP_MIN_Y, CRATE_GAP_MAX_Y);
+    const expeditionSupply = progress.supplies.campProvision <= progress.supplies.routeReroll
+        ? 'campProvision' : 'routeReroll';
+    const supply = selectedMode === 'classic' && progress.supplies.catBed < 2 ? 'catBed'
+        : selectedMode === 'expedition' && progress.supplies[expeditionSupply] < 2 ? expeditionSupply : 'fish';
+    const unowned = [...GEAR_IDS, ...ENCHANTMENT_IDS].filter(id => !progress.owned.includes(id));
+    const gear = unowned.length > 0 && rand() < 0.25 ? unowned[Math.floor(rand(0, unowned.length))] : 'fish';
+    const offered = ['fish', 'fish', supply, gear];
+    runCrates.push({ x: Math.max(75, Math.min(width - 75, previous.x + (next.x - previous.x) * 0.5 + rand(-35, 35))),
+        y, born: elapsed, opened: false, offered });
 }
 function crateOffer(crate) {
     return crate.offered[crateOfferIndex(crate)];
@@ -1384,12 +1400,15 @@ function ensureAudio() {
     effectsGain = audioCtx.createGain();
     effectsGain.gain.value = 0.94 * effectsLevel;
     effectsGain.connect(masterGain);
-    brushBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.13), audioCtx.sampleRate);
+    brushBuffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.36), audioCtx.sampleRate);
     const samples = brushBuffer.getChannelData(0);
     let noiseSeed = 0x62a5d;
+    let softened = 0;
     for (let i = 0; i < samples.length; i++) {
         noiseSeed = (Math.imul(noiseSeed, 1664525) + 1013904223) >>> 0;
-        samples[i] = (noiseSeed / 2147483648 - 1) * (1 - i / samples.length);
+        softened += ((noiseSeed / 2147483648 - 1) - softened) * 0.16;
+        const taper = Math.sin(Math.PI * i / (samples.length - 1)) ** 2;
+        samples[i] = softened * taper;
     }
     musicNext = audioCtx.currentTime + 0.18;
     musicBar = 0;
@@ -1514,9 +1533,9 @@ function schedulePixelPluck(note, when, duration = 0.20, level = 0.006) {
     voice.type = 'square';
     voice.frequency.setValueAtTime(midiToHz(note), when);
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1500, when);
+    filter.frequency.setValueAtTime(1350, when);
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(level, when + 0.009);
+    gain.gain.exponentialRampToValueAtTime(level, when + 0.022);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
     voice.connect(filter).connect(gain).connect(musicGain);
     voice.start(when);
@@ -1529,14 +1548,15 @@ function scheduleBrush(when, level = 0.0025) {
     const filter = audioCtx.createBiquadFilter();
     const gain = audioCtx.createGain();
     source.buffer = brushBuffer;
-    filter.type = 'highpass';
-    filter.frequency.setValueAtTime(1600, when);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(850, when);
+    filter.Q.value = 0.45;
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(level, when + 0.007);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.11);
+    gain.gain.exponentialRampToValueAtTime(level * 0.55, when + 0.09);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.34);
     source.connect(filter).connect(gain).connect(musicGain);
     source.start(when);
-    source.stop(when + 0.12);
+    source.stop(when + 0.35);
 }
 function scheduleMallet(note, when, duration = 0.50, level = 0.010) {
     if (!audioCtx || muted)
@@ -1606,6 +1626,7 @@ function scheduleWinterBar(bar, when) {
     if (phrase === 1 && bar % 2 === 0)
         scheduleCello(p.root + 7, when + eighth * 3, eighth * 2.8, 0.006);
     scheduleWarmPad(p.chord[2], when, barLen * 0.96, 0.006 + musicLift * 0.002);
+    scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.82, 0.0028);
     if (phrase === 2 && bar % 2 === 1)
         schedulePixelPluck(p.chord[3] + 12, when + eighth * 5, 0.18, 0.004);
     return barLen;
@@ -1633,6 +1654,7 @@ function scheduleSpringBar(bar, when) {
         scheduleChime(p.melody[2], when + eighth * 4.1, 0.40, 0.009);
     scheduleCello(p.root, when, barLen * 0.95, 0.009);
     scheduleWarmPad(p.chord[2], when, barLen * 0.94, 0.005 + musicLift * 0.002);
+    scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.80, 0.0026);
     if (phrase === 1 && bar % 2 === 1)
         schedulePixelPluck(p.chord[3] + 12, when + eighth * 4.5, 0.16, 0.004);
     return barLen;
@@ -1660,6 +1682,7 @@ function scheduleSummerBar(bar, when) {
     if (phrase === 1 && bar % 2 === 0)
         scheduleCello(p.root + 7, when + eighth * 3, barLen * 0.42, 0.005);
     scheduleWarmPad(p.chord[2], when, barLen * 0.90, 0.005 + musicLift * 0.002);
+    scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.78, 0.0025);
     if (phrase === 2 && bar % 2 === 0)
         schedulePixelPluck(p.chord[3] + 12, when + eighth * 5, 0.18, 0.005);
     return barLen;
@@ -1685,6 +1708,7 @@ function scheduleAutumnBar(bar, when) {
         schedulePiano(p.melody[1] + 12, when + eighth * 4.6, 0.54, 0.009);
     scheduleCello(p.root, when, barLen * 0.98, phrase === 3 || musicDescending ? 0.009 : 0.013);
     scheduleWarmPad(p.chord[2], when, barLen * 0.96, 0.006 + musicLift * 0.001);
+    scheduleWarmPad(p.chord[1], when + 0.12, barLen * 0.82, 0.0027);
     if (phrase === 1 && bar % 2 === 1)
         schedulePixelPluck(p.chord[1] + 12, when + eighth * 2.5, 0.19, 0.004);
     return barLen;
@@ -2129,6 +2153,7 @@ function settleExpeditionCheckpoint() {
     const nextOrdinal = (bells.at(-1)?.id ?? bellCount) + 1;
     bells = [];
     moths = [];
+    runCrates = [];
     nextBonusBell = nextOrdinal + 17;
     generateInitialPath(nextOrdinal, expeditionCheckpointY + 205);
     setAnimState('groundLand');
@@ -2170,6 +2195,7 @@ function settleZenGround() {
     const nextOrdinal = (bells.at(-1)?.id ?? bellCount) + 1;
     bells = [];
     moths = [];
+    runCrates = [];
     fieldDrop = 0;
     nextBonusBell = nextOrdinal + 17;
     generateInitialPath(nextOrdinal);

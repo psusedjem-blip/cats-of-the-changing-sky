@@ -68,7 +68,13 @@ let runCampBoost = false;
 let catBedArmed = false;
 let campProvisionArmed = false;
 let runCrates: MysteryCrate[] = [];
-let nextCrateOrdinal = 12;
+// Crates follow world height rather than target IDs. Route rebuilds can jump
+// target IDs, so ordinal scheduling used to create a dense row of crates.
+let nextCrateWorldY = 0;
+const FIRST_CRATE_MIN_Y = 8000;
+const FIRST_CRATE_MAX_Y = 10500;
+const CRATE_GAP_MIN_Y = 12500;
+const CRATE_GAP_MAX_Y = 17000;
 
 function startProgressRun(): void {
   runHighestBand = 0; runHighBand = 0; runBirdRewards = 0; runCampRewards = 0;
@@ -76,7 +82,7 @@ function startProgressRun(): void {
   runBedUsed = false; runFirstBell = true; runEchoUsed = false; runSoftfallTime = 0;
   runEchoTime = 0; runBedFxTime = 0;
   runCampBoost = false; catBedArmed = false; campProvisionArmed = false;
-  runCrates = []; nextCrateOrdinal = 12;
+  runCrates = []; nextCrateWorldY = rand(FIRST_CRATE_MIN_Y, FIRST_CRATE_MAX_Y);
 }
 function awardFish(amount: number, reason: string): void {
   if (amount <= 0) return;
@@ -148,12 +154,22 @@ function grantCrateReward(id: RewardId): void {
   messageTimer = 2;
 }
 function maybePlaceCrate(previous: Bell, next: Bell): void {
-  if (next.id < nextCrateOrdinal) return;
-  nextCrateOrdinal += Math.floor(rand(13, 20));
-  const candidates: RewardId[] = [...GEAR_IDS, ...ENCHANTMENT_IDS, ...SUPPLY_IDS, 'fish'];
-  const offered = [0, 1, 2, 3].map(() => candidates[Math.floor(rand(0, candidates.length))]);
-  runCrates.push({ x: Math.max(75, Math.min(width - 75, previous.x + rand(-65, 65))),
-    y: previous.y - fieldDrop + (next.y - previous.y) * rand(0.45, 0.65), born: elapsed, opened: false, offered });
+  const previousY = bellWorldY(previous);
+  const nextY = bellWorldY(next);
+  if (nextY < nextCrateWorldY) return;
+  // A route can resume above a scheduled height. Advance from the actual
+  // placement so the next target cannot also receive a crate.
+  const y = previousY + (nextY - previousY) * rand(0.44, 0.59);
+  nextCrateWorldY = y + rand(CRATE_GAP_MIN_Y, CRATE_GAP_MAX_Y);
+  const expeditionSupply: SupplyId = progress.supplies.campProvision <= progress.supplies.routeReroll
+    ? 'campProvision' : 'routeReroll';
+  const supply: RewardId = selectedMode === 'classic' && progress.supplies.catBed < 2 ? 'catBed'
+    : selectedMode === 'expedition' && progress.supplies[expeditionSupply] < 2 ? expeditionSupply : 'fish';
+  const unowned = [...GEAR_IDS, ...ENCHANTMENT_IDS].filter(id => !progress.owned.includes(id));
+  const gear: RewardId = unowned.length > 0 && rand() < 0.25 ? unowned[Math.floor(rand(0, unowned.length))] : 'fish';
+  const offered: RewardId[] = ['fish', 'fish', supply, gear];
+  runCrates.push({ x: Math.max(75, Math.min(width - 75, previous.x + (next.x - previous.x) * 0.5 + rand(-35, 35))),
+    y, born: elapsed, opened: false, offered });
 }
 function crateOffer(crate: MysteryCrate): RewardId {
   return crate.offered[crateOfferIndex(crate)];
