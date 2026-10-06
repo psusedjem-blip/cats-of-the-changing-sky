@@ -312,6 +312,10 @@ function drawExpeditionComplete(): void {
     spring: `${CHARACTER_META[selectedCharacter].name} reaches the Spring Crown beyond the blossom sky.`,
     summer: `${CHARACTER_META[selectedCharacter].name} reaches the Summer Crown beyond the sapphire clouds.`,
     autumn: `${CHARACTER_META[selectedCharacter].name} reaches the Autumn Crown beyond the copper stars.`,
+    'starlight-eve': `${CHARACTER_META[selectedCharacter].name} reaches the Starlight Crown above the harbor.`,
+    'great-egg-hunt': `${CHARACTER_META[selectedCharacter].name} reaches the Conservatory Crown beyond the clouds.`,
+    'fireworks-fair': `${CHARACTER_META[selectedCharacter].name} reaches the Coastal Crown above the fair.`,
+    'moonlit-masquerade': `${CHARACTER_META[selectedCharacter].name} reaches the Moonlit Crown beyond the oak.`,
   };
   ctx.fillStyle = themeMeta().accent;
   ctx.font = '600 15px ui-rounded, system-ui, sans-serif';

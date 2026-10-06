@@ -26,7 +26,9 @@ type Spark = { x: number; y: number; vx: number; vy: number; ttl: number; life: 
 type GroundMark = { x: number; age: number; life: number; side: number; theme: ThemeName };
 
 type GameState = 'title' | 'ready' | 'playing' | 'falling' | 'zenGrounded' | 'expeditionCheckpoint' | 'expeditionComplete' | 'gameover';
-type ThemeName = 'winter' | 'spring' | 'summer' | 'autumn';
+type SeasonName = 'winter' | 'spring' | 'summer' | 'autumn';
+type FestivalName = 'starlight-eve' | 'great-egg-hunt' | 'fireworks-fair' | 'moonlit-masquerade';
+type ThemeName = SeasonName | FestivalName;
 type GameMode = 'classic' | 'zen' | 'expedition';
 type CharacterId = 'zima' | 'earl-grey' | 'betty-davis' | 'gracie-bell';
 type CompanionId = Exclude<CharacterId, 'zima'>;
@@ -91,7 +93,7 @@ fallTuckImage.src = 'assets/characters/zima/fall-tuck.png';
 
 // Preserve the scarf's painted highlights and folds while changing only its
 // blue cloth pixels. Keep one season's derived canvases in memory at a time.
-const SCARF_COLORS: Record<Exclude<ThemeName, 'winter'>, [number, number, number]> = {
+const SCARF_COLORS: Record<Exclude<SeasonName, 'winter'>, [number, number, number]> = {
   spring: [218, 126, 164],
   summer: [65, 165, 153],
   autumn: [151, 68, 112],
@@ -99,7 +101,7 @@ const SCARF_COLORS: Record<Exclude<ThemeName, 'winter'>, [number, number, number
 const scarfArtCache = new Map<string, HTMLCanvasElement>();
 const MAX_SCARF_TINT_CELLS = 72;
 function seasonalScarfArt(image: HTMLImageElement, key: string, frame?: SpriteFrame): CanvasImageSource {
-  if (selectedTheme === 'winter' || !image.naturalWidth) return image;
+  if (baseSeason(selectedTheme) === 'winter' || !image.naturalWidth) return image;
   const cached = scarfArtCache.get(key);
   if (cached) {
     scarfArtCache.delete(key);
@@ -117,7 +119,7 @@ function seasonalScarfArt(image: HTMLImageElement, key: string, frame?: SpriteFr
   else paint.drawImage(image, 0, 0, result.width, result.height);
   const pixels = paint.getImageData(0, 0, result.width, result.height);
   const data = pixels.data;
-  const color = SCARF_COLORS[selectedTheme];
+  const color = SCARF_COLORS[baseSeason(selectedTheme) as Exclude<SeasonName, 'winter'>];
   const limit = key.startsWith('fall') ? 0.73 : frame ? 0.78 : 0.80;
   const rowStride = result.width * 4;
   for (let y = 0; y < result.height; y++) {
@@ -145,12 +147,26 @@ function seasonalScarfArt(image: HTMLImageElement, key: string, frame?: SpriteFr
   return result;
 }
 
-const THEME_ORDER: ThemeName[] = ['winter', 'spring', 'summer', 'autumn'];
+const FESTIVAL_ORDER: FestivalName[] = ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'];
+const THEME_ORDER: ThemeName[] = ['winter', 'starlight-eve', 'spring', 'great-egg-hunt', 'summer', 'fireworks-fair', 'autumn', 'moonlit-masquerade'];
+const FESTIVAL_BASE: Record<FestivalName, SeasonName> = {
+  'starlight-eve': 'winter', 'great-egg-hunt': 'spring',
+  'fireworks-fair': 'summer', 'moonlit-masquerade': 'autumn',
+};
+function isFestival(theme: ThemeName): theme is FestivalName { return theme in FESTIVAL_BASE; }
+function baseSeason(theme: ThemeName): SeasonName { return isFestival(theme) ? FESTIVAL_BASE[theme] : theme; }
+const FESTIVAL_COST: Record<FestivalName, number> = {
+  'starlight-eve': 30, 'great-egg-hunt': 45, 'fireworks-fair': 60, 'moonlit-masquerade': 75,
+};
 const THEME_META: Record<ThemeName, { label: string; subtitle: string; normal: string; medium: string; strong: string; airborne: string; accent: string; card: string; }> = {
   winter: { label: 'Winter', subtitle: 'Moonlit snow and ringing bells', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Aurora Bird', accent: '#9fe8da', card: '#173c56' },
   spring: { label: 'Spring', subtitle: 'Rain, blossoms, and dragonflies', normal: 'Raindrop', medium: 'Blossom', strong: 'Glow Bloom', airborne: 'Dragonfly', accent: '#ff96cf', card: '#2b5f60' },
   summer: { label: 'Summer', subtitle: 'Sunflowers, swallows, and warm fields', normal: 'Sunflower', medium: 'Golden Bloom', strong: 'Radiant Flower', airborne: 'Swallow', accent: '#ffd36d', card: '#5c7c2f' },
   autumn: { label: 'Autumn', subtitle: 'Pumpkins, crows, and harvest fields', normal: 'Pumpkin', medium: 'Harvest Gourd', strong: "Jack-o'-Lantern", airborne: 'Crow', accent: '#ffb062', card: '#75411c' },
+  'starlight-eve': { label: 'Starlight Eve', subtitle: 'An alpine harbor beneath an astronomical lighthouse', normal: 'Star Bell', medium: 'Moon Bell', strong: 'Astral Bell', airborne: 'Snowy Owl', accent: '#b9dfff', card: '#26365b' },
+  'great-egg-hunt': { label: 'Great Egg Hunt', subtitle: 'Terraced gardens and a cliffside conservatory', normal: 'Painted Egg', medium: 'Bloom Egg', strong: 'Golden Egg', airborne: 'Garden Butterfly', accent: '#f6a3b4', card: '#53705a' },
+  'fireworks-fair': { label: 'Fireworks Fair', subtitle: 'A coastal pier under a summer festival sky', normal: 'Pinwheel', medium: 'Festival Wheel', strong: 'Radiant Wheel', airborne: 'Flying Fish', accent: '#ffc778', card: '#345a83' },
+  'moonlit-masquerade': { label: 'Moonlit Masquerade', subtitle: 'Treehouses and lanterns above an autumn forest', normal: 'Lantern', medium: 'Moon Lantern', strong: 'Ghost Lantern', airborne: 'Friendly Bat', accent: '#e4a5d6', card: '#51395d' },
 };
 const CHARACTER_ORDER: CharacterId[] = ['zima', 'earl-grey', 'betty-davis', 'gracie-bell'];
 const CHARACTER_META: Record<CharacterId, { name: string; hint: string; portrait: string; }> = {
@@ -224,7 +240,7 @@ const companionEventArt: Record<CompanionId, typeof earlEventArt> = {
 };
 const companionArtState = { 'earl-grey': 'loading', 'betty-davis': 'loading', 'gracie-bell': 'loading' } as Record<CompanionId, AssetState>;
 const companionTintCache = new Map<string, HTMLCanvasElement>();
-const COMPANION_CLOTH: Record<CompanionId, Record<ThemeName, [number, number, number]>> = {
+const COMPANION_CLOTH: Record<CompanionId, Record<SeasonName, [number, number, number]>> = {
   'earl-grey': { winter: [106, 132, 178], spring: [181, 119, 153], summer: [104, 152, 113], autumn: [163, 94, 69] },
   'betty-davis': { winter: [138, 169, 193], spring: [177, 118, 168], summer: [203, 165, 104], autumn: [167, 104, 132] },
   'gracie-bell': { winter: [111, 151, 183], spring: [185, 139, 171], summer: [81, 164, 157], autumn: [193, 147, 83] },
@@ -236,7 +252,7 @@ const GRACIE_RIBBON_BOUNDS: Record<CompanionPose, [number, number, number, numbe
 };
 function seasonalCompanionArt(character: CompanionId, pose: CompanionPose, sourceOverride?: HTMLImageElement): CanvasImageSource {
   const source = sourceOverride ?? companionArt[character][pose];
-  if ((selectedTheme === 'autumn' && character === 'gracie-bell') || (selectedTheme === 'spring' && character === 'betty-davis')) return source;
+  if ((baseSeason(selectedTheme) === 'autumn' && character === 'gracie-bell') || (baseSeason(selectedTheme) === 'spring' && character === 'betty-davis')) return source;
   const key = `${character}:${pose}:${selectedTheme}:${sourceOverride?.src ?? 'base'}`;
   const cached = companionTintCache.get(key);
   if (cached) return cached;
@@ -246,7 +262,7 @@ function seasonalCompanionArt(character: CompanionId, pose: CompanionPose, sourc
   paint.drawImage(source, 0, 0);
   const pixels = paint.getImageData(0, 0, result.width, result.height);
   const data = pixels.data;
-  const target = COMPANION_CLOTH[character][selectedTheme];
+  const target = COMPANION_CLOTH[character][baseSeason(selectedTheme)];
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < 16) continue;
     if (character === 'gracie-bell') {
@@ -297,15 +313,23 @@ const SCENE_ASSET_PATHS: Record<ThemeName, { sky: string; far: string; mid: stri
   spring: { sky: 'assets/themes/spring/sky.webp', far: 'assets/themes/spring/far.webp', mid: 'assets/themes/spring/mid.webp', near: 'assets/themes/spring/near.webp', ground: 'assets/themes/spring/ground.webp' },
   summer: { sky: 'assets/themes/summer/sky.webp', far: 'assets/themes/summer/far.webp', mid: 'assets/themes/summer/mid.webp', near: 'assets/themes/summer/near.webp', ground: 'assets/themes/summer/ground.webp', prop: 'assets/themes/summer/windmill-prop.webp' },
   autumn: { sky: 'assets/themes/autumn/sky.webp', far: 'assets/themes/autumn/far.webp', mid: 'assets/themes/autumn/mid.webp', near: 'assets/themes/autumn/near.webp', ground: 'assets/themes/autumn/ground.webp', prop: 'assets/themes/autumn/scarecrow-prop.webp' },
+  'starlight-eve': { sky: 'assets/themes/winter/sky.webp', far: 'assets/themes/winter/far-mountains.webp', mid: 'assets/themes/winter/mid-village.webp', near: 'assets/themes/winter/mid-pines.webp', ground: 'assets/themes/starlight-eve/ground.png' },
+  'great-egg-hunt': { sky: 'assets/themes/spring/sky.webp', far: 'assets/themes/spring/far.webp', mid: 'assets/themes/spring/mid.webp', near: 'assets/themes/spring/near.webp', ground: 'assets/themes/great-egg-hunt/ground.png' },
+  'fireworks-fair': { sky: 'assets/themes/summer/sky.webp', far: 'assets/themes/summer/far.webp', mid: 'assets/themes/summer/mid.webp', near: 'assets/themes/summer/near.webp', ground: 'assets/themes/fireworks-fair/ground.png' },
+  'moonlit-masquerade': { sky: 'assets/themes/autumn/sky.webp', far: 'assets/themes/autumn/far.webp', mid: 'assets/themes/autumn/mid.webp', near: 'assets/themes/autumn/near.webp', ground: 'assets/themes/moonlit-masquerade/ground.png' },
 };
 const SCENE_LAYOUT: Record<ThemeName, { far: [number, number]; mid: [number, number]; near: [number, number]; groundSurface: number }> = {
   winter: { far: [0.15, 0.76], mid: [0.36, 0.62], near: [0.18, 0.70], groundSurface: 0.75 },
   spring: { far: [0.15, 0.75], mid: [0.32, 0.65], near: [0.00, 0.90], groundSurface: 0.70 },
   summer: { far: [0.15, 0.75], mid: [0.34, 0.64], near: [0.10, 0.80], groundSurface: 0.69 },
   autumn: { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
+  'starlight-eve': { far: [0.15, 0.76], mid: [0.36, 0.62], near: [0.18, 0.70], groundSurface: 0.75 },
+  'great-egg-hunt': { far: [0.15, 0.75], mid: [0.32, 0.65], near: [0.00, 0.90], groundSurface: 0.70 },
+  'fireworks-fair': { far: [0.15, 0.75], mid: [0.34, 0.64], near: [0.10, 0.80], groundSurface: 0.69 },
+  'moonlit-masquerade': { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
 };
 const sceneAssets: Partial<Record<ThemeName, SceneAssets>> = {};
-const sceneAssetState: Record<ThemeName, AssetState> = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
+const sceneAssetState: Record<ThemeName, AssetState> = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle'])) as Record<ThemeName, AssetState>;
 let groundFrontCache: { key: string; image: HTMLCanvasElement } | null = null;
 const winterReeds = new Image();
 winterReeds.src = 'assets/themes/winter/winter-snow-reeds.webp';
@@ -380,7 +404,7 @@ function loadSceneAssets(theme: ThemeName): void {
       ground,
       prop,
       groundSurface: layout.groundSurface,
-      groundHeight: 0.46,
+      groundHeight: theme === 'moonlit-masquerade' ? 0.90 : 0.46,
     };
     sceneAssetState[theme] = 'ready';
   }).catch(error => {
@@ -401,8 +425,8 @@ const THEME_ART: Partial<Record<ThemeName, ThemeArt>> = {};
 function ensureLegacyArt(theme: ThemeName): void {
   if (THEME_ART[theme]) return;
   THEME_ART[theme] = {
-    bg: loadThemeImage(`assets/seasonal/${theme}-painted-bg.png`),
-    ground: loadThemeImage(`assets/seasonal/${theme}-painted-ground.png`),
+    bg: loadThemeImage(`assets/seasonal/${baseSeason(theme)}-painted-bg.png`),
+    ground: loadThemeImage(`assets/seasonal/${baseSeason(theme)}-painted-ground.png`),
   };
 }
 
@@ -413,15 +437,23 @@ const OBJECT_BOUNDS: Record<ThemeName, [SpriteBounds, SpriteBounds, SpriteBounds
   spring: [{ x: 138, y: 74, w: 391, h: 601 }, { x: 693, y: 87, w: 605, h: 584 }, { x: 1368, y: 63, w: 645, h: 606 }],
   summer: [{ x: 25, y: 60, w: 630, h: 625 }, { x: 698, y: 77, w: 667, h: 609 }, { x: 1365, y: 40, w: 670, h: 680 }],
   autumn: [{ x: 59, y: 74, w: 623, h: 603 }, { x: 682, y: 27, w: 582, h: 677 }, { x: 1376, y: 72, w: 618, h: 614 }],
+  'starlight-eve': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+  'great-egg-hunt': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+  'fireworks-fair': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+  'moonlit-masquerade': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
 };
 const INTERACTION_ASSET_PATHS: Record<ThemeName, { objects: string; airborne: string }> = {
   winter: { objects: 'assets/themes/winter/objects-atlas.webp', airborne: 'assets/themes/winter/airborne-atlas.webp' },
   spring: { objects: 'assets/themes/spring/objects-atlas.webp', airborne: 'assets/themes/spring/airborne-atlas.webp' },
   summer: { objects: 'assets/themes/summer/objects-atlas.webp', airborne: 'assets/themes/summer/airborne-atlas.webp' },
   autumn: { objects: 'assets/themes/autumn/objects-atlas.webp', airborne: 'assets/themes/autumn/airborne-atlas.webp' },
+  'starlight-eve': { objects: 'assets/themes/starlight-eve/targets.png', airborne: 'assets/themes/starlight-eve/visitor.png' },
+  'great-egg-hunt': { objects: 'assets/themes/great-egg-hunt/targets.png', airborne: 'assets/themes/great-egg-hunt/visitor.png' },
+  'fireworks-fair': { objects: 'assets/themes/fireworks-fair/targets.png', airborne: 'assets/themes/fireworks-fair/visitor.png' },
+  'moonlit-masquerade': { objects: 'assets/themes/moonlit-masquerade/targets.png', airborne: 'assets/themes/moonlit-masquerade/visitor.png' },
 };
 const interactionAssets: Partial<Record<ThemeName, InteractionAssets>> = {};
-const interactionAssetState: Record<ThemeName, AssetState> = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
+const interactionAssetState: Record<ThemeName, AssetState> = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle'])) as Record<ThemeName, AssetState>;
 function loadInteractionAssets(theme: ThemeName): void {
   if (interactionAssetState[theme] !== 'idle') return;
   interactionAssetState[theme] = 'loading';
@@ -439,6 +471,7 @@ function loadSelectedThemeArt(theme: ThemeName): void {
   loadInteractionAssets(theme);
   loadContinuousSeason(theme);
   loadUpperRealm(theme);
+  loadFestivalBed(theme);
 }
 
 function selectedArtLoading(): boolean {
@@ -535,10 +568,14 @@ let fieldDrop = 0;
 let bounceChain = 0;
 let pendingBounce = 0;
 let paused = false;
+const LOCAL_TEST_BUILD = (globalThis as typeof globalThis & { SKYBELLS_LOCAL_TEST_BUILD?: boolean }).SKYBELLS_LOCAL_TEST_BUILD === true;
+let devMode = false;
+let devFlight = false;
+let devFish = 0;
 const savedTheme = localStorage.getItem('zima-skybells-theme') as ThemeName;
 const savedMode = localStorage.getItem('zima-skybells-mode');
 const savedCharacter = localStorage.getItem('zima-skybells-character') as CharacterId;
-let selectedTheme: ThemeName = THEME_ORDER.includes(savedTheme) ? savedTheme : 'winter';
+let selectedTheme: ThemeName = THEME_ORDER.includes(savedTheme) && festivalUnlocked(savedTheme) ? savedTheme : 'winter';
 let selectedMode: GameMode = savedMode === 'zen' || savedMode === 'expedition' ? savedMode : 'classic';
 let selectedCharacter: CharacterId = CHARACTER_ORDER.includes(savedCharacter) ? savedCharacter : 'zima';
 loadSelectedThemeArt(selectedTheme);
@@ -608,6 +645,13 @@ let lastMenuUi = '';
 let lastBoardUi = '';
 let lastHotbarContext = '';
 function syncDomUi(): void {
+  const devControls = document.querySelector<HTMLElement>('#dev-controls');
+  if (devControls) devControls.hidden = !(LOCAL_TEST_BUILD && devMode);
+  const devStatus = document.querySelector<HTMLElement>('#dev-status');
+  if (devStatus) {
+    devStatus.hidden = !(LOCAL_TEST_BUILD && devMode);
+    devStatus.textContent = `LOCAL TEST · ${devFlight ? 'FLIGHT ON (W/S)' : 'F: FLIGHT'} · ${devFish} test fish`;
+  }
   const inventory = document.querySelector<HTMLElement>('#powerup-bar');
   if (inventory) inventory.hidden = state === 'title';
   const inventoryStatus = document.querySelector<HTMLElement>('#powerup-status');
@@ -616,12 +660,19 @@ function syncDomUi(): void {
   if (hotbarContext !== lastHotbarContext) { lastHotbarContext = hotbarContext; refreshProgressUi(); }
   if (menuOverlay) {
     menuOverlay.hidden = state !== 'title' || scoreboardOpen;
-    const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}`;
+    const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}|${progress.fish}|${progress.unlockedFestivals.join(',')}|${devMode}`;
     if (signature !== lastMenuUi) {
       lastMenuUi = signature;
       menuOverlay.style.setProperty('--accent', themeMeta().accent);
-      menuOverlay.querySelectorAll<HTMLButtonElement>('[data-season]').forEach(button =>
-        button.setAttribute('aria-pressed', String(button.dataset.season === selectedTheme)));
+      menuOverlay.querySelectorAll<HTMLButtonElement>('[data-season]').forEach(button => {
+        const theme = button.dataset.season as ThemeName;
+        const locked = !festivalUnlocked(theme);
+        button.setAttribute('aria-pressed', String(theme === selectedTheme));
+        button.classList.toggle('locked', locked);
+        button.setAttribute('aria-label', locked ? `${THEME_META[theme].label}. Unlock for ${FESTIVAL_COST[theme as FestivalName]} fish.` : THEME_META[theme].label);
+        const hint = button.querySelector('small');
+        if (hint) hint.textContent = locked ? `Unlock: ${FESTIVAL_COST[theme as FestivalName]} fish` : `${THEME_META[theme].normal} / ${THEME_META[theme].airborne}`;
+      });
       menuOverlay.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(button =>
         button.setAttribute('aria-pressed', String(button.dataset.mode === selectedMode)));
       menuOverlay.querySelectorAll<HTMLButtonElement>('[data-character]').forEach(button =>
@@ -724,7 +775,7 @@ if (menuOverlay) {
     const name = document.createElement('span'); name.textContent = THEME_META[theme].label;
     const hint = document.createElement('small'); hint.textContent = `${THEME_META[theme].normal} · ${THEME_META[theme].airborne}`;
     button.append(name, hint);
-    button.addEventListener('click', () => setTheme(theme));
+    button.addEventListener('click', () => chooseTheme(theme));
     seasonOptions?.append(button);
   }
   const modeOptions = menuOverlay.querySelector<HTMLElement>('#mode-options');
@@ -778,7 +829,7 @@ function tierPoints(kind: BellKind): number { return kind === 'crystal' ? 30 : k
 
 function awardPoints(base: number): void {
   score += BigInt(base) * BigInt(multiplier);
-  if (selectedMode !== 'expedition' && score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
+  if (!runDebugged && selectedMode !== 'expedition' && score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
 }
 
 const cat = {
@@ -809,8 +860,29 @@ function themeMeta(): (typeof THEME_META)[ThemeName] {
   return THEME_META[selectedTheme];
 }
 
+function releaseFestivalAssets(theme: ThemeName): void {
+  if (!isFestival(theme)) return;
+  // Keep only the active festival's large paintings decoded during long play.
+  if (continuousState[theme] === 'ready') {
+    const art = seasonContinuousArt[theme];
+    art.world = new Image(); art.upper = new Image(); art.starfield = new Image();
+    continuousState[theme] = 'idle';
+  }
+  if (sceneAssetState[theme] === 'ready') { delete sceneAssets[theme]; sceneAssetState[theme] = 'idle'; }
+  if (interactionAssetState[theme] === 'ready') { delete interactionAssets[theme]; interactionAssetState[theme] = 'idle'; }
+  if (upperRealmArt[theme].state === 'ready') {
+    upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+    delete upperFootholdArt[theme];
+  }
+  delete festivalBedArt[theme];
+}
+
 function setTheme(theme: ThemeName): void {
-  if (selectedTheme !== theme) releasePreparedSeason(selectedTheme);
+  if (!festivalUnlocked(theme)) return;
+  if (selectedTheme !== theme) {
+    releasePreparedSeason(selectedTheme);
+    releaseFestivalAssets(selectedTheme);
+  }
   selectedTheme = theme;
   loadSelectedThemeArt(theme);
   refreshProgressUi();
@@ -820,6 +892,19 @@ function setTheme(theme: ThemeName): void {
   rebuildBackdrop();
   prepareUpperTerrain(theme);
   resetMusicForTheme();
+}
+
+function chooseTheme(theme: ThemeName): void {
+  if (isFestival(theme) && !festivalUnlocked(theme)) {
+    if (!unlockFestival(theme)) {
+      const feedback = document.querySelector<HTMLElement>('#unlock-feedback');
+      if (feedback) feedback.textContent = `${THEME_META[theme].label} needs ${FESTIVAL_COST[theme]} fish. You have ${progress.fish}.`;
+      return;
+    }
+    const feedback = document.querySelector<HTMLElement>('#unlock-feedback');
+    if (feedback) feedback.textContent = `${THEME_META[theme].label} unlocked!`;
+  }
+  setTheme(theme);
 }
 
 function setGameMode(mode: GameMode): void {
@@ -837,7 +922,7 @@ function setCharacter(character: CharacterId): void {
 }
 
 function recordScore(): void {
-  if (score <= 0n || bellCount <= 0) return;
+  if (runDebugged || score <= 0n || bellCount <= 0) return;
   if (selectedMode === 'expedition' && state !== 'expeditionComplete') return;
   if (!runEquipped) {
     if (score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
@@ -894,6 +979,7 @@ function returnToTitle(): void {
   groundTravel = 0;
   nextGroundStep = 38;
   setAnimState('idle');
+  if (!festivalUnlocked(selectedTheme)) setTheme(baseSeason(selectedTheme));
 }
 
 function pointInRect(x: number, y: number, r: Rect | null): boolean {
@@ -901,14 +987,14 @@ function pointInRect(x: number, y: number, r: Rect | null): boolean {
 }
 
 function seasonStroke(): string {
-  return selectedTheme === 'winter' ? '#eff9ff' : selectedTheme === 'spring' ? '#ffffff' : selectedTheme === 'summer' ? '#fff6cc' : '#fff0cf';
+  return baseSeason(selectedTheme) === 'winter' ? '#eff9ff' : baseSeason(selectedTheme) === 'spring' ? '#ffffff' : baseSeason(selectedTheme) === 'summer' ? '#fff6cc' : '#fff0cf';
 }
 
 function seasonPanelFill(alpha = 0.50): string {
   const a = alpha.toFixed(2);
-  if (selectedTheme === 'winter') return `rgba(5,19,32,${a})`;
-  if (selectedTheme === 'spring') return `rgba(29,67,73,${a})`;
-  if (selectedTheme === 'summer') return `rgba(58,72,22,${a})`;
+  if (baseSeason(selectedTheme) === 'winter') return `rgba(5,19,32,${a})`;
+  if (baseSeason(selectedTheme) === 'spring') return `rgba(29,67,73,${a})`;
+  if (baseSeason(selectedTheme) === 'summer') return `rgba(58,72,22,${a})`;
   return `rgba(64,35,18,${a})`;
 }
 
@@ -932,7 +1018,7 @@ function resize(): void {
 }
 
 function rebuildBackdrop(): void {
-  const starCount = selectedTheme === 'winter' ? Math.floor((width * height) / 7500) : selectedTheme === 'summer' ? Math.floor((width * height) / 22000) : Math.floor((width * height) / 18000);
+  const starCount = baseSeason(selectedTheme) === 'winter' ? Math.floor((width * height) / 7500) : baseSeason(selectedTheme) === 'summer' ? Math.floor((width * height) / 22000) : Math.floor((width * height) / 18000);
   stars = Array.from({ length: starCount }, () => ({
     x: Math.random() * width,
     y: Math.random() * height * 0.65,
@@ -940,13 +1026,13 @@ function rebuildBackdrop(): void {
     twinkle: Math.random() * TAU,
     alpha: Math.random() * 0.5 + 0.2,
   }));
-  const particleCount = Math.floor((width * height) / (selectedTheme === 'spring' ? 5200 : selectedTheme === 'autumn' ? 5600 : selectedTheme === 'summer' ? 7200 : 6800));
+  const particleCount = Math.floor((width * height) / (baseSeason(selectedTheme) === 'spring' ? 5200 : baseSeason(selectedTheme) === 'autumn' ? 5600 : baseSeason(selectedTheme) === 'summer' ? 7200 : 6800));
   snow = Array.from({ length: particleCount }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
     r: Math.random() * 2 + 0.8,
-    speed: selectedTheme === 'winter' ? Math.random() * 26 + 14 : selectedTheme === 'spring' ? Math.random() * 120 + 90 : selectedTheme === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
-    drift: selectedTheme === 'winter' ? Math.random() * 20 + 8 : selectedTheme === 'spring' ? Math.random() * 10 + 3 : selectedTheme === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
+    speed: baseSeason(selectedTheme) === 'winter' ? Math.random() * 26 + 14 : selectedTheme === 'great-egg-hunt' ? Math.random() * 45 + 28 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 120 + 90 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
+    drift: baseSeason(selectedTheme) === 'winter' ? Math.random() * 20 + 8 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 10 + 3 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
     phase: Math.random() * TAU,
     alpha: Math.random() * 0.45 + 0.18,
   }));
@@ -1053,9 +1139,9 @@ function addSeasonBurst(x: number, y: number, intensity = 1): void {
     const speed = rand(55, 170) * intensity;
     let kind: SparkKind = 'spark';
     let color = '#ffffff';
-    if (selectedTheme === 'winter') { kind = 'snow'; color = i % 3 === 0 ? '#d8f5ff' : '#ffffff'; }
-    else if (selectedTheme === 'spring') { kind = i % 3 === 0 ? 'droplet' : 'petal'; color = kind === 'droplet' ? '#8ddcff' : (i % 2 ? '#ffd0e8' : '#ffffff'); }
-    else if (selectedTheme === 'summer') { kind = 'pollen'; color = i % 3 === 0 ? '#fff7b8' : '#ffd75c'; }
+    if (baseSeason(selectedTheme) === 'winter') { kind = 'snow'; color = i % 3 === 0 ? '#d8f5ff' : '#ffffff'; }
+    else if (baseSeason(selectedTheme) === 'spring') { kind = i % 3 === 0 ? 'droplet' : 'petal'; color = kind === 'droplet' ? '#8ddcff' : (i % 2 ? '#ffd0e8' : '#ffffff'); }
+    else if (baseSeason(selectedTheme) === 'summer') { kind = 'pollen'; color = i % 3 === 0 ? '#fff7b8' : '#ffd75c'; }
     else { kind = 'leaf'; color = ['#d94f2e','#ef8b35','#f1b548','#9d5b2b'][i % 4]; }
     sparks.push({
       x, y,
@@ -1075,10 +1161,10 @@ function emitGroundStep(): void {
   const side = groundStepSide;
   groundStepSide *= -1;
   const x = cat.x + side * 17;
-  groundMarks.push({ x, age: 0, life: selectedTheme === 'winter' ? 4 : 2.6, side, theme: selectedTheme });
+  groundMarks.push({ x, age: 0, life: baseSeason(selectedTheme) === 'winter' ? 4 : 2.6, side, theme: selectedTheme });
   if (groundMarks.length > 40) groundMarks.shift();
-  const kind: SparkKind = selectedTheme === 'winter' ? 'snow' : selectedTheme === 'spring' ? 'droplet' : selectedTheme === 'summer' ? 'pollen' : 'leaf';
-  const color = selectedTheme === 'winter' ? '#eaf7ff' : selectedTheme === 'spring' ? '#a9e6bb' : selectedTheme === 'summer' ? '#ffe39a' : '#eaa151';
+  const kind: SparkKind = baseSeason(selectedTheme) === 'winter' ? 'snow' : baseSeason(selectedTheme) === 'spring' ? 'droplet' : baseSeason(selectedTheme) === 'summer' ? 'pollen' : 'leaf';
+  const color = baseSeason(selectedTheme) === 'winter' ? '#eaf7ff' : baseSeason(selectedTheme) === 'spring' ? '#a9e6bb' : baseSeason(selectedTheme) === 'summer' ? '#ffe39a' : '#eaa151';
   for (let i = 0; i < 3; i++) sparks.push({
     x, y: GROUND_Y + 3, vx: rand(-36, 36), vy: rand(15, 58),
     ttl: rand(0.35, 0.7), life: 0, size: rand(1.3, 3), color, kind, spin: rand(-3, 3),
@@ -1154,7 +1240,7 @@ function togglePause(): void {
 
 function currentMusicContext(): MusicContext {
   return {
-    theme: selectedTheme,
+    theme: baseSeason(selectedTheme),
     altitude: cameraY,
     verticalVelocity: cat.vy,
     state,
@@ -1223,6 +1309,21 @@ function update(dt: number): void {
     if (cat.x < halfW) cat.x = halfW;
     if (cat.x > width - halfW) cat.x = width - halfW;
     if (cat.y === GROUND_Y) updateGroundTravel(Math.abs(cat.x - cat.prevX));
+    return;
+  }
+
+  if (LOCAL_TEST_BUILD && devMode && devFlight) {
+    runDebugged = true;
+    state = 'playing';
+    const up = keys.has('KeyW') || keys.has('ArrowUp');
+    const down = keys.has('KeyS') || keys.has('ArrowDown');
+    cat.vy = (Number(up) - Number(down)) * 1500;
+    cat.x = Math.max(CAT_EDGE_MARGIN, Math.min(width - CAT_EDGE_MARGIN, cat.x + cat.vx * dt));
+    cat.y = Math.max(GROUND_Y, cat.y + cat.vy * dt);
+    highestY = Math.max(highestY, cat.y);
+    descentPeakY = Math.max(descentPeakY, cat.y);
+    cameraY += (Math.max(0, cat.y - height * 0.43) - cameraY) * Math.min(1, dt * 9);
+    extendPath();
     return;
   }
 
@@ -1322,11 +1423,11 @@ function update(dt: number): void {
 
 function updateSnow(dt: number): void {
   for (const s of snow) {
-    s.phase += dt * (selectedTheme === 'summer' ? 1.3 : 0.6);
+    s.phase += dt * (baseSeason(selectedTheme) === 'summer' ? 1.3 : 0.6);
     s.y += s.speed * dt;
     s.x += Math.sin(s.phase) * s.drift * dt;
-    if (selectedTheme === 'spring') s.x -= 20 * dt;
-    if (selectedTheme === 'autumn') s.x += Math.sin(s.phase * 1.6) * 18 * dt;
+    if (baseSeason(selectedTheme) === 'spring') s.x -= 20 * dt;
+    if (baseSeason(selectedTheme) === 'autumn') s.x += Math.sin(s.phase * 1.6) * 18 * dt;
     if (s.y > height + 12 || s.x < -20 || s.x > width + 20) { s.y = -12; s.x = Math.random() * width; }
   }
   if (state === 'playing' || state === 'falling') {
@@ -1409,7 +1510,7 @@ function draw(): void {
   } else {
     // Failed scenery loads keep a painted local fallback, not a different
     // geometric landscape that breaks the game's visual language.
-    ctx.fillStyle = selectedTheme === 'winter' ? '#071b35' : selectedTheme === 'spring' ? '#a6c9e4' : selectedTheme === 'summer' ? '#75bce8' : '#5c3043';
+    ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#071b35' : baseSeason(selectedTheme) === 'spring' ? '#a6c9e4' : baseSeason(selectedTheme) === 'summer' ? '#75bce8' : '#5c3043';
     ctx.fillRect(0, 0, width, height);
     drawPaintedBackdrop();
     drawPaintedGround(worldToScreenY(GROUND_Y));
@@ -1478,7 +1579,7 @@ function drawLaunchPad(x: number, y: number): void {
   ctx.save();
   const gx = x;
   const gy = y + 2;
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     const g = ctx.createRadialGradient(gx, gy + 2, 10, gx, gy + 2, 90);
     g.addColorStop(0, 'rgba(252,254,255,.98)');
     g.addColorStop(0.62, 'rgba(215,233,244,.92)');
@@ -1487,13 +1588,13 @@ function drawLaunchPad(x: number, y: number): void {
     ctx.beginPath(); ctx.ellipse(gx, gy + 12, 94, 22, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.beginPath(); ctx.ellipse(gx - 24, gy + 9, 24, 6, -0.18, 0, TAU); ctx.ellipse(gx + 24, gy + 13, 22, 5, 0.14, 0, TAU); ctx.fill();
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     ctx.fillStyle = 'rgba(139,207,119,.95)';
     ctx.beginPath(); ctx.ellipse(gx, gy + 12, 94, 23, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(171,225,246,.52)'; ctx.beginPath(); ctx.ellipse(gx - 18, gy + 12, 32, 8, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#ffd1ea';
     for (let i = 0; i < 8; i++) { const px = gx - 48 + i * 13; const py = gy + 2 + (i % 3) * 3; ctx.beginPath(); ctx.arc(px, py, 5, 0, TAU); ctx.fill(); }
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     ctx.fillStyle = 'rgba(145,200,86,.96)';
     ctx.beginPath(); ctx.ellipse(gx, gy + 14, 96, 22, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#f4d56d';
@@ -1547,15 +1648,27 @@ function drawSnow(): void {
   ctx.save();
   for (const s of snow) {
     ctx.globalAlpha = s.alpha;
-    if (selectedTheme === 'winter') {
+    if (selectedTheme === 'great-egg-hunt') {
+      ctx.fillStyle = Math.floor(s.phase * 3) % 3 === 0 ? '#fff1bd' : '#ffd0dd';
+      ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * 1.6, s.r * 0.8, s.phase, 0, TAU); ctx.fill();
+    } else if (selectedTheme === 'fireworks-fair') {
+      ctx.fillStyle = s.y > height * 0.65 ? '#c9edff' : '#ffe4a0';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.72, 0, TAU); ctx.fill();
+    } else if (selectedTheme === 'moonlit-masquerade' && Math.floor(s.phase * 3) % 4 === 0) {
+      ctx.fillStyle = '#ffd49d';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.9, 0, TAU); ctx.fill();
+    } else if (selectedTheme === 'starlight-eve' && Math.floor(s.phase * 3) % 6 === 0) {
+      ctx.fillStyle = cameraY < 16000 ? '#ffe4ac' : '#daedff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.75, 0, TAU); ctx.fill();
+    } else if (baseSeason(selectedTheme) === 'winter') {
       ctx.fillStyle = '#effbff';
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
-    } else if (selectedTheme === 'spring') {
+    } else if (baseSeason(selectedTheme) === 'spring') {
       ctx.strokeStyle = 'rgba(205,232,255,.70)';
       ctx.lineWidth = Math.max(1, s.r * 0.8);
       ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.drift * 0.16, s.y + s.speed * 0.12); ctx.stroke();
       if ((s.phase * 10) % 9 < 1.8) { ctx.fillStyle = 'rgba(255,221,238,.55)'; ctx.beginPath(); ctx.arc(s.x + 2, s.y + 1, Math.max(1.5, s.r*0.7), 0, TAU); ctx.fill(); }
-    } else if (selectedTheme === 'summer') {
+    } else if (baseSeason(selectedTheme) === 'summer') {
       ctx.fillStyle = 'rgba(255,245,165,.72)';
       ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * 1.3, s.r * 0.7, s.phase, 0, TAU); ctx.fill();
     } else {
@@ -1569,6 +1682,27 @@ function drawSnow(): void {
     }
   }
   ctx.restore();
+  if (selectedTheme === 'fireworks-fair' && cameraY > 7000) {
+    const age = elapsed % 5.7;
+    if (age < 1.2) {
+      const burst = Math.floor(elapsed / 5.7);
+      const x = width * (0.28 + winterSkyHash(burst * 29) * 0.44);
+      const y = height * (0.24 + winterSkyHash(burst * 47) * 0.22);
+      const radius = 18 + age * 31;
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.50, age * 1.4) * (1 - age / 1.2);
+      ctx.strokeStyle = burst % 2 ? '#ffcf87' : '#c8deff';
+      ctx.lineWidth = 2;
+      for (let ray = 0; ray < 10; ray++) {
+        const angle = ray * TAU / 10;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(angle) * radius * 0.5, y + Math.sin(angle) * radius * 0.5);
+        ctx.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
 }
 
 
@@ -1615,7 +1749,7 @@ canvas.addEventListener('pointerdown', e => {
     const x = e.clientX;
     const y = e.clientY;
     for (const card of themeCardRects) {
-      if (pointInRect(x, y, card.rect)) { setTheme(card.theme); return; }
+      if (pointInRect(x, y, card.rect)) { chooseTheme(card.theme); return; }
     }
     for (const card of modeCardRects) {
       if (pointInRect(x, y, card.rect)) { setGameMode(card.mode); return; }
@@ -1627,6 +1761,18 @@ canvas.addEventListener('pointerdown', e => {
 });
 window.addEventListener('keydown', e => {
   const inUi = (e.target as Element | null)?.closest?.('.ui-overlay');
+  if (LOCAL_TEST_BUILD && e.ctrlKey && e.altKey && e.code === 'KeyT') {
+    e.preventDefault();
+    devMode = !devMode;
+    if (!devMode) { devFlight = false; devFish = 0; restoreTestPurchases(); }
+    if (!devMode && state === 'title' && !festivalUnlocked(selectedTheme)) setTheme(baseSeason(selectedTheme));
+    if (state !== 'title') runDebugged = true;
+    lastMenuUi = '';
+    refreshProgressUi();
+    const feedback = document.querySelector<HTMLElement>('#unlock-feedback');
+    if (feedback) feedback.textContent = devMode ? 'Local test mode on. Festival locks are bypassed.' : 'Local test mode off.';
+    return;
+  }
   if (e.code === 'Escape') { e.preventDefault(); if (scoreboardOpen) closeScoreboard(); else returnToTitle(); return; }
   if (scoreboardOpen && e.code === 'Tab' && boardOverlay) {
     const controls = Array.from(boardOverlay.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]'));
@@ -1654,13 +1800,24 @@ window.addEventListener('keydown', e => {
     return;
   }
   keys.add(e.code);
+  if (LOCAL_TEST_BUILD && devMode && e.code === 'KeyF') {
+    e.preventDefault();
+    devFlight = !devFlight;
+    runDebugged = true;
+    bounceHold = 0; pendingBounce = 0;
+    if (devFlight && state === 'falling') state = 'playing';
+    return;
+  }
   if (e.code === 'KeyP') { togglePause(); return; }
   if (e.code === 'KeyM') { toggleMute(paused); return; }
   if (e.code === 'KeyR') { if (state === 'playing' || state === 'falling' || state === 'zenGrounded') recordScore(); resetGame(); return; }
   if (state === 'title') {
     let idx = THEME_ORDER.indexOf(selectedTheme);
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { idx = (idx + THEME_ORDER.length - 1) % THEME_ORDER.length; setTheme(THEME_ORDER[idx]); return; }
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') { idx = (idx + 1) % THEME_ORDER.length; setTheme(THEME_ORDER[idx]); return; }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'ArrowRight' || e.code === 'KeyD') {
+      const step = e.code === 'ArrowLeft' || e.code === 'KeyA' ? -1 : 1;
+      do { idx = (idx + step + THEME_ORDER.length) % THEME_ORDER.length; } while (!festivalUnlocked(THEME_ORDER[idx]));
+      setTheme(THEME_ORDER[idx]); return;
+    }
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'ArrowDown' || e.code === 'KeyS') {
       const index = GAME_MODES.indexOf(selectedMode);
       const delta = e.code === 'ArrowUp' || e.code === 'KeyW' ? GAME_MODES.length - 1 : 1;

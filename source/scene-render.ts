@@ -25,11 +25,11 @@ function drawPaintedBackdrop(): void {
   const art = THEME_ART[selectedTheme]?.bg;
   const top = height * 0.06;
   const h = Math.max(340, height * 0.64);
-  if (art) drawCoverImage(art, 0, top, width, h, selectedTheme === 'winter' ? 0.72 : 0.78);
+  if (art) drawCoverImage(art, 0, top, width, h, baseSeason(selectedTheme) === 'winter' ? 0.72 : 0.78);
   const wash = ctx.createLinearGradient(0, top, 0, top + h);
-  wash.addColorStop(0, selectedTheme === 'winter' ? 'rgba(4,15,29,.22)' : 'rgba(255,255,255,.04)');
+  wash.addColorStop(0, baseSeason(selectedTheme) === 'winter' ? 'rgba(4,15,29,.22)' : 'rgba(255,255,255,.04)');
   wash.addColorStop(0.72, 'rgba(255,255,255,0)');
-  wash.addColorStop(1, selectedTheme === 'winter' ? 'rgba(9,29,43,.28)' : selectedTheme === 'spring' ? 'rgba(82,136,123,.14)' : selectedTheme === 'summer' ? 'rgba(102,128,57,.12)' : 'rgba(116,65,30,.16)');
+  wash.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(9,29,43,.28)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(82,136,123,.14)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(102,128,57,.12)' : 'rgba(116,65,30,.16)');
   ctx.fillStyle = wash;
   ctx.fillRect(0, top, width, h);
 }
@@ -43,7 +43,7 @@ function drawPaintedGround(baseY: number): void {
   const fade = ctx.createLinearGradient(0, y, 0, y + h);
   fade.addColorStop(0, 'rgba(255,255,255,0)');
   fade.addColorStop(0.82, 'rgba(255,255,255,0)');
-  fade.addColorStop(1, selectedTheme === 'winter' ? 'rgba(177,207,221,.30)' : selectedTheme === 'spring' ? 'rgba(84,146,86,.22)' : selectedTheme === 'summer' ? 'rgba(85,139,59,.20)' : 'rgba(129,78,34,.24)');
+  fade.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(177,207,221,.30)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(84,146,86,.22)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(85,139,59,.20)' : 'rgba(129,78,34,.24)');
   ctx.fillStyle = fade;
   ctx.fillRect(0, y, width, h);
 }
@@ -77,7 +77,7 @@ function drawNearSceneLayer(layer: SceneLayer): void {
 }
 
 function drawSceneBackdrop(art: SceneAssets): void {
-  ctx.fillStyle = selectedTheme === 'winter' ? '#081e40' : selectedTheme === 'spring' ? '#849be0' : selectedTheme === 'summer' ? '#3a94e9' : '#4a2c50';
+  ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#081e40' : baseSeason(selectedTheme) === 'spring' ? '#849be0' : baseSeason(selectedTheme) === 'summer' ? '#3a94e9' : '#4a2c50';
   ctx.fillRect(0, 0, width, height);
   // The one painted sky travels below the camera as altitude increases.
   // A softened top edge leaves the atmosphere open without repeating clouds
@@ -94,11 +94,11 @@ function drawSceneGround(art: SceneAssets): void {
   const layerHeight = Math.max(270, height * art.groundHeight);
   // Align the painted center walking surface with Zima's world-space feet.
   drawCoverImage(art.ground, 0, groundY - layerHeight * art.groundSurface, width, layerHeight, 1, art.groundSurface);
-  if (selectedTheme === 'winter' || selectedTheme === 'spring') drawGroundCutouts(groundY, false);
+  if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring') drawGroundCutouts(groundY, false);
 }
 
 function drawGroundCutouts(groundY: number, inFront: boolean): void {
-  const detail = selectedTheme === 'winter' ? winterReeds : springFlowerBank;
+  const detail = baseSeason(selectedTheme) === 'winter' ? winterReeds : springFlowerBank;
   if (!detail.complete || !detail.naturalWidth || groundY < -120 || groundY > height + 130) return;
   const spots = inFront ? [0.07, 0.93] : [0.25, 0.75];
   const w = Math.min(132, Math.max(72, width * (inFront ? 0.105 : 0.075)));
@@ -134,13 +134,13 @@ function groundFrontImage(art: SceneAssets): HTMLCanvasElement {
   mask.height = Math.ceil(layerHeight);
   const m = mask.getContext('2d')!;
   const surface = layerHeight * art.groundSurface;
-  const props: Record<ThemeName, [number, number, number, number][]> = {
+  const props: Record<SeasonName, [number, number, number, number][]> = {
     winter: [[0.12, -4, 0.05, 25], [0.88, -4, 0.05, 25]],
     spring: [[0.11, -6, 0.05, 30], [0.89, -6, 0.05, 30]],
     summer: [[0.13, -5, 0.085, 40], [0.87, -5, 0.085, 40]],
     autumn: [[0.09, -2, 0.075, 32], [0.91, -2, 0.075, 32]],
   };
-  for (const [cx, cy, rx, ry] of props[selectedTheme]) {
+  for (const [cx, cy, rx, ry] of props[baseSeason(selectedTheme)]) {
     m.save();
     m.translate(width * cx, surface + cy);
     m.scale(width * rx, ry);
@@ -153,7 +153,7 @@ function groundFrontImage(art: SceneAssets): HTMLCanvasElement {
     m.restore();
   }
   // A few registered surface pixels overlap the paws instead of a drawn arc.
-  const winter = selectedTheme === 'winter';
+  const winter = baseSeason(selectedTheme) === 'winter';
   const lip = m.createLinearGradient(0, surface - (winter ? 20 : 13), 0, surface + (winter ? 15 : 10));
   lip.addColorStop(0, 'rgba(255,255,255,0)');
   lip.addColorStop(0.55, 'rgba(255,255,255,0.52)');
@@ -172,12 +172,12 @@ function drawSceneFront(art: SceneAssets): void {
   const top = groundY - layerHeight * art.groundSurface;
   if (top > height || top + layerHeight < 0) return;
   ctx.drawImage(groundFrontImage(art), 0, top);
-  if (selectedTheme === 'winter' || selectedTheme === 'spring') drawGroundCutouts(groundY, true);
+  if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring') drawGroundCutouts(groundY, true);
 }
 
 function drawSceneProp(art: SceneAssets): void {
   if (!art.prop) return;
-  const isSummer = selectedTheme === 'summer';
+  const isSummer = baseSeason(selectedTheme) === 'summer';
   const propHeight = height * (isSummer ? 0.25 : 0.20);
   const propWidth = propHeight * art.prop.naturalWidth / art.prop.naturalHeight;
   const x = width * (isSummer ? 0.33 : 0.73);

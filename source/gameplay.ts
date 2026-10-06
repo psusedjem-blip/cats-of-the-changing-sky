@@ -177,6 +177,10 @@ function expeditionGoalName(stage = expeditionStage): string {
     spring: ['Cross Blossom Heights', 'Cross Petal Constellations', 'Reach Spring Crown'],
     summer: ['Cross Sunlit Heights', 'Cross Sapphire Clouds', 'Reach Summer Crown'],
     autumn: ['Cross Ember Heights', 'Cross Copper Constellations', 'Reach Autumn Crown'],
+    'starlight-eve': ['Cross Harbor Lights', 'Cross Astral Sea', 'Reach Starlight Crown'],
+    'great-egg-hunt': ['Cross Garden Heights', 'Cross Cloud Blossoms', 'Reach Conservatory Crown'],
+    'fireworks-fair': ['Cross Festival Pier', 'Cross Firework Sky', 'Reach Coastal Crown'],
+    'moonlit-masquerade': ['Cross Oak Canopy', 'Cross Lantern Sky', 'Reach Moonlit Crown'],
   };
   return names[selectedTheme][Math.min(2, stage)];
 }

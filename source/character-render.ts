@@ -354,7 +354,7 @@ function drawCat(x: number, y: number, vx: number, vy: number): void {
   if (grounded) {
     ctx.save();
     ctx.translate(x, y);
-    const alpha = selectedTheme === 'winter' ? 0.30 : selectedTheme === 'spring' ? 0.25 : selectedTheme === 'summer' ? 0.27 : 0.28;
+    const alpha = baseSeason(selectedTheme) === 'winter' ? 0.30 : baseSeason(selectedTheme) === 'spring' ? 0.25 : baseSeason(selectedTheme) === 'summer' ? 0.27 : 0.28;
     drawShadow(25 + Math.abs(vx) * 0.012, alpha, 4);
     ctx.restore();
   }

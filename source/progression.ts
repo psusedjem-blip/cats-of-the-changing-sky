@@ -6,7 +6,7 @@ type SupplyId = 'catBed' | 'campProvision' | 'routeReroll';
 type RewardId = GearId | EnchantmentId | SupplyId | 'fish';
 type GearSlot = 'movement' | 'utility';
 type ProgressSave = {
-  version: 1; fish: number; owned: RewardId[];
+  version: 2; fish: number; owned: RewardId[]; unlockedFestivals: FestivalName[];
   movement: GearId | null; utility: GearId | null;
   enchantment: EnchantmentId | null;
   supplies: Record<SupplyId, number>;
@@ -14,6 +14,7 @@ type ProgressSave = {
 type MysteryCrate = { x: number; y: number; born: number; opened: boolean; offered: RewardId[] };
 
 const PROGRESS_KEY = 'cats-changing-sky-progression-v1';
+const TEST_PROGRESS_BACKUP_KEY = 'cats-changing-sky-test-purchase-backup';
 const PROGRESSION_ITEMS: { id: RewardId; name: string; cost: number; icon: string; slot?: GearSlot | 'enchantment'; description: string }[] = [
   { id: 'windstep', name: 'Windstep Boots', cost: 12, icon: 'windstep-boots.webp', slot: 'movement', description: 'Steer 8% faster in the air.' },
   { id: 'softstep', name: 'Softstep Boots', cost: 12, icon: 'softstep-boots.webp', slot: 'movement', description: 'Hold Shift to brake precisely in the air.' },
@@ -30,24 +31,50 @@ const ENCHANTMENT_IDS: EnchantmentId[] = ['bellwake', 'softfall'];
 const SUPPLY_IDS: SupplyId[] = ['catBed', 'campProvision', 'routeReroll'];
 
 function freshProgress(): ProgressSave {
-  return { version: 1, fish: 0, owned: [], movement: null, utility: null,
+  return { version: 2, fish: 0, owned: [], unlockedFestivals: [], movement: null, utility: null,
     enchantment: null, supplies: { catBed: 0, campProvision: 0, routeReroll: 0 } };
 }
 function loadProgress(): ProgressSave {
   try {
+    const backup = localStorage.getItem(TEST_PROGRESS_BACKUP_KEY);
+    if (backup) {
+      localStorage.setItem(PROGRESS_KEY, backup);
+      localStorage.removeItem(TEST_PROGRESS_BACKUP_KEY);
+    }
     const raw = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
-    if (!raw || raw.version !== 1) return freshProgress();
+    if (!raw || (raw.version !== 1 && raw.version !== 2)) return freshProgress();
     const owned = Array.isArray(raw.owned) ? raw.owned.filter((id: unknown) =>
       GEAR_IDS.includes(id as GearId) || ENCHANTMENT_IDS.includes(id as EnchantmentId)) : [];
     const supplies = Object.fromEntries(SUPPLY_IDS.map(id => [id,
       Number.isSafeInteger(raw.supplies?.[id]) ? Math.max(0, Math.min(99, raw.supplies[id])) : 0])) as Record<SupplyId, number>;
-    return { version: 1, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0,
+    const unlockedFestivals = raw.version === 2 && Array.isArray(raw.unlockedFestivals)
+      ? raw.unlockedFestivals.filter((id: unknown): id is FestivalName =>
+          ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'].includes(id as string)) : [];
+    return { version: 2, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals,
       owned, movement: owned.includes(raw.movement) ? raw.movement : null,
       utility: owned.includes(raw.utility) ? raw.utility : null,
       enchantment: owned.includes(raw.enchantment) ? raw.enchantment : null, supplies };
   } catch { return freshProgress(); }
 }
 let progress = loadProgress();
+function restoreTestPurchases(): void {
+  if (!localStorage.getItem(TEST_PROGRESS_BACKUP_KEY)) return;
+  progress = loadProgress();
+  refreshProgressUi();
+}
+function festivalUnlocked(theme: ThemeName): boolean {
+  return !isFestival(theme) || progress.unlockedFestivals.includes(theme) || (LOCAL_TEST_BUILD && devMode);
+}
+function unlockFestival(theme: FestivalName): boolean {
+  if (progress.unlockedFestivals.includes(theme)) return true;
+  if (LOCAL_TEST_BUILD && devMode) return true;
+  const cost = FESTIVAL_COST[theme];
+  if (progress.fish < cost) return false;
+  progress.fish -= cost;
+  progress.unlockedFestivals.push(theme);
+  saveProgress();
+  return true;
+}
 function saveProgress(): void {
   try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); }
   catch (error) { console.warn('Progress could not be saved.', error); }
@@ -58,6 +85,7 @@ let runHighBand = 0;
 let runBirdRewards = 0;
 let runCampRewards = 0;
 let runEquipped = false;
+let runDebugged = false;
 let runBedUsed = false;
 let runFirstBell = true;
 let runEchoUsed = false;
@@ -79,13 +107,14 @@ const CRATE_GAP_MAX_Y = 17000;
 function startProgressRun(): void {
   runHighestBand = 0; runHighBand = 0; runBirdRewards = 0; runCampRewards = 0;
   runEquipped = !!(progress.movement || progress.utility || progress.enchantment);
+  runDebugged = LOCAL_TEST_BUILD && devMode;
   runBedUsed = false; runFirstBell = true; runEchoUsed = false; runSoftfallTime = 0;
   runEchoTime = 0; runBedFxTime = 0;
   runCampBoost = false; catBedArmed = false; campProvisionArmed = false;
   runCrates = []; nextCrateWorldY = rand(FIRST_CRATE_MIN_Y, FIRST_CRATE_MAX_Y);
 }
 function awardFish(amount: number, reason: string): void {
-  if (amount <= 0) return;
+  if (amount <= 0 || runDebugged) return;
   progress.fish = Math.min(Number.MAX_SAFE_INTEGER, progress.fish + amount);
   saveProgress();
   message = `+${amount} FISH · ${reason.toUpperCase()}`;
@@ -120,10 +149,15 @@ function beginLaunchProgress(): void {
 }
 function purchaseItem(id: RewardId): boolean {
   const item = PROGRESSION_ITEMS.find(entry => entry.id === id);
-  if (!item || id === 'fish' || progress.fish < item.cost) return false;
+  if (!item || id === 'fish' || progress.fish + devFish < item.cost) return false;
   if (item.slot && progress.owned.includes(id)) return false;
   if (SUPPLY_IDS.includes(id as SupplyId) && progress.supplies[id as SupplyId] >= 9) return false;
-  progress.fish -= item.cost;
+  const testSpent = Math.min(devFish, item.cost);
+  if (testSpent > 0 && !localStorage.getItem(TEST_PROGRESS_BACKUP_KEY)) {
+    localStorage.setItem(TEST_PROGRESS_BACKUP_KEY, JSON.stringify(progress));
+  }
+  devFish -= testSpent;
+  progress.fish -= item.cost - testSpent;
   if (item.slot) {
     progress.owned.push(id);
     if (item.slot === 'movement') progress.movement = id as GearId;
@@ -200,6 +234,13 @@ function updateCrates(): void {
 
 const progressionImages = {} as Record<string, HTMLImageElement>;
 const themedBedArt: Partial<Record<ThemeName, HTMLCanvasElement>> = {};
+const festivalBedArt: Partial<Record<FestivalName, HTMLImageElement>> = {};
+function loadFestivalBed(theme: ThemeName): void {
+  if (!isFestival(theme) || festivalBedArt[theme]) return;
+  const image = new Image();
+  image.src = `assets/themes/${theme}/cat-bed.png`;
+  festivalBedArt[theme] = image;
+}
 for (const item of [...PROGRESSION_ITEMS, { id: 'fish', icon: 'fish.webp' }, { id: 'crate', icon: 'crate.webp' }]) {
   const image = new Image(); image.src = `assets/progression/${item.icon}`;
   progressionImages[item.id] = image;
@@ -253,7 +294,8 @@ function updateProgressEffects(dt: number): void {
 function drawProgressEffects(): void {
   const x = cat.x, y = worldToScreenY(cat.y);
   if (runBedFxTime > 0 && progressionImages.catBed?.naturalWidth) {
-    let bed = themedBedArt[selectedTheme];
+    let bed: CanvasImageSource | undefined = isFestival(selectedTheme) && festivalBedArt[selectedTheme]?.naturalWidth
+      ? festivalBedArt[selectedTheme] : themedBedArt[selectedTheme];
     if (!bed) {
       bed = document.createElement('canvas'); bed.width = bed.height = 256;
       const paint = bed.getContext('2d')!;
@@ -319,7 +361,7 @@ function showPowerupFeedback(text: string): void {
 function activateInventorySlot(slot: number): void {
   if (slot === 0) {
     if (state === 'title') openProgressDialog('shop-overlay');
-    else showPowerupFeedback(`${progress.fish.toLocaleString()} fish. Spend them in Gear & supplies on the title screen.`);
+    else showPowerupFeedback(`${progress.fish.toLocaleString()} earned fish${devFish ? ` plus ${devFish} temporary test fish` : ''}. Spend them in Gear & supplies on the title screen.`);
     return;
   }
   const item = PROGRESSION_ITEMS[slot - 1];

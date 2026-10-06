@@ -25,6 +25,8 @@ PREFIX = "" if args.store else "zima-skybells-extension/"
 runtime_assets = {
     "manifest.json", "background.js", "index.html", "main.js", "style.css",
 }
+if not args.store:
+    runtime_assets.add("test-build.js")
 zima_poses = (
     "animation-clean-atlas.webp", "turn-pose.webp", "idle-four-keys.webp",
     "turn-front.webp", "turn-middle.webp", "idle-sixteen.webp",
@@ -76,6 +78,11 @@ for season in ("winter", "spring", "summer", "autumn"):
             "autumn": "scarecrow-prop",
         }[season] + ".webp")
 
+festival_routes = ("starlight-eve", "great-egg-hunt", "fireworks-fair", "moonlit-masquerade")
+festival_parts = ("world", "upper-sky", "starfield", "ground", "targets", "visitor", "foothold", "cat-bed")
+runtime_assets.update(f"assets/themes/{route}/{part}.png"
+                      for route in festival_routes for part in festival_parts)
+
 for size in (16, 32, 48, 128):
     runtime_assets.add(f"icons/icon{size}.png")
     runtime_assets.update(f"icons/cats/{cat}-{size}.png" for cat in cats)
@@ -87,7 +94,22 @@ for path in files:
 
 with zipfile.ZipFile(TEMP_OUTPUT, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
     for path in sorted(set(files)):
-        archive.write(path, PREFIX + path.relative_to(ROOT).as_posix())
+        member = PREFIX + path.relative_to(ROOT).as_posix()
+        if args.store and path.name == "index.html":
+            html = path.read_text(encoding="utf-8")
+            html = re.sub(r'\s*<!-- LOCAL TEST START -->.*?<!-- LOCAL TEST END -->\s*', "\n", html, flags=re.S)
+            html = re.sub(r'^\s*<script src="test-build\.js" data-local-test></script>\s*\n', "", html, flags=re.M)
+            if 'test-build.js' in html or 'dev-controls' in html or 'dev-status' in html:
+                raise RuntimeError("Store page still references local test mode")
+            archive.writestr(member, html)
+        elif args.store and path.name == "main.js":
+            javascript = path.read_text(encoding="utf-8")
+            flag = "const LOCAL_TEST_BUILD = globalThis.SKYBELLS_LOCAL_TEST_BUILD === true;"
+            if javascript.count(flag) != 1:
+                raise RuntimeError("Store build could not disable local test mode")
+            archive.writestr(member, javascript.replace(flag, "const LOCAL_TEST_BUILD = false;"))
+        else:
+            archive.write(path, member)
 
 with zipfile.ZipFile(TEMP_OUTPUT) as archive:
     if bad_file := archive.testzip():
@@ -112,9 +134,14 @@ with zipfile.ZipFile(TEMP_OUTPUT) as archive:
         if PREFIX + "manifest.json" not in archive.namelist():
             raise RuntimeError("Sideload archive layout is invalid")
     html = archive.read(PREFIX + "index.html").decode("utf-8")
+    if args.store and ("test-build.js" in html or "test-build.js" in archive.namelist()):
+        raise RuntimeError("Local test controls leaked into the store package")
     if f'main.js?v={VERSION}' not in html:
         raise RuntimeError("Preview page script version differs from manifest")
     javascript = archive.read(PREFIX + "main.js").decode("utf-8")
+    if args.store and ("const LOCAL_TEST_BUILD = false;" not in javascript or
+                       "SKYBELLS_LOCAL_TEST_BUILD" in javascript):
+        raise RuntimeError("Store code still allows local test mode")
     asset_refs = set(re.findall(r"assets/[A-Za-z0-9_./-]+\.(?:webp|png)", javascript))
     missing_assets = sorted(ref for ref in asset_refs if PREFIX + ref not in archive.namelist())
     if missing_assets:
@@ -168,6 +195,12 @@ with zipfile.ZipFile(TEMP_OUTPUT) as archive:
     missing_progression = [ref for ref in progression_assets if PREFIX + ref not in archive.namelist()]
     if missing_progression:
         raise RuntimeError(f"Missing progression art: {missing_progression}")
+
+    festival_assets = [f"assets/themes/{route}/{part}.png"
+                       for route in festival_routes for part in festival_parts]
+    missing_festival = [ref for ref in festival_assets if PREFIX + ref not in archive.namelist()]
+    if missing_festival:
+        raise RuntimeError(f"Missing festival route art: {missing_festival}")
 
 TEMP_OUTPUT.replace(OUTPUT)
 print(f"{OUTPUT} ({OUTPUT.stat().st_size:,} bytes; {len(files)} files; {len(asset_refs)} static, {len(terrain_assets)} terrain, {len(continuous_assets)} continuous-world, {len(dynamic_character_assets)} character, and {len(progression_assets)} progression references checked)")

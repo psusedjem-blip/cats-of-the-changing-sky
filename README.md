@@ -17,7 +17,7 @@ The game opens in its own browser tab when you click the extension icon. It has 
 
 The cats share the same play rules. Pick the one you want to see on the climb.
 
-## Four changing worlds
+## Eight changing worlds
 
 The scenery moves with the ascent rather than repeating a short backdrop. Each season has its own ground, sky, floating targets, music, and airborne visitor.
 
@@ -27,6 +27,17 @@ The scenery moves with the ascent rather than repeating a short backdrop. Each s
 | **Spring** 🌸 | Rain and blossoms, raindrop and flower targets, and a dragonfly. |
 | **Summer** 🌻 | Sunflower fields, warm open sky, and a swallow. |
 | **Autumn** 🍂 | Harvest fields, pumpkins, lanterns, and a crow. |
+
+Four festival routes branch from those seasons with new locations, targets, airborne visitors, Cat Beds, and changing skies:
+
+| Route | Unlock cost | Location and visitor |
+| --- | ---: | --- |
+| **Starlight Eve** | 30 fish | Alpine harbor and snowy owl. |
+| **Great Egg Hunt** | 45 fish | Terraced conservatory and garden butterfly. |
+| **Fireworks Fair** | 60 fish | Coastal pier and flying fish. |
+| **Moonlit Masquerade** | 75 fish | Treehouse forest and friendly bat. |
+
+Select a locked route on the title screen to spend the listed fish and unlock it permanently. The four original seasons remain free. All eight worlds support Classic, Zen, and Expedition.
 
 ## Choose a way to climb
 
@@ -82,6 +93,8 @@ The character and scenery art was **generated with AI**, then selected, revised,
 ## Beta source and build
 
 The `main` branch is the stable game. Work on this `beta` branch remains separate until it is ready for a stable release. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
+
+Local unpacked and sideload test builds include `test-build.js`. Press `Ctrl+Alt+T` to toggle test mode. While active, festival locks are bypassed, `F` toggles flight, and `W`/`S` or Up/Down fly vertically. Settings offers 100 temporary test fish for checking the shop. Test fish expire when the page closes, and test runs do not earn permanent fish or enter the score board. Store packages exclude the test script and controls and hard-disable test mode in the bundled JavaScript.
 
 Install Node.js and Python 3, then run `npm ci` and `npm run check`. `npm run build` compiles TypeScript. `npm run package:store` builds the store ZIP with `manifest.json` at its root; `npm run package:sideload` builds the GitHub ZIP with an enclosing extension folder. The packaging script checks archive integrity and asset references before replacing a release ZIP. Review each cat, season, and mode in a browser before distributing a beta package.
 

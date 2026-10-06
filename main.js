@@ -24,6 +24,26 @@ const CHAPTER_BANDS = {
         { name: 'Migration Sky', near: '#573c58', light: '#ffcfaa' },
         { name: 'Lantern Dusk', near: '#40334f', light: '#ffd895' },
     ],
+    'starlight-eve': [
+        { name: 'Harbor Lights', near: '#243e63', light: '#d8efff' },
+        { name: 'Aurora Lighthouse', near: '#293b67', light: '#a7eaff' },
+        { name: 'Astral Harbor', near: '#202b53', light: '#ffe7ba' },
+    ],
+    'great-egg-hunt': [
+        { name: 'Hedge Maze', near: '#538c71', light: '#ffe0dc' },
+        { name: 'Glasshouse Heights', near: '#699b92', light: '#f7f0d5' },
+        { name: 'Cloud Conservatory', near: '#789fae', light: '#fff0ef' },
+    ],
+    'fireworks-fair': [
+        { name: 'Festival Pier', near: '#3a7094', light: '#ffe3a4' },
+        { name: 'Lighthouse Cliffs', near: '#315f94', light: '#fff1c0' },
+        { name: 'Firework Sky', near: '#273b78', light: '#ffe7b5' },
+    ],
+    'moonlit-masquerade': [
+        { name: 'Oak Root Path', near: '#594761', light: '#ffcc9e' },
+        { name: 'Lantern Treehouses', near: '#4d3e61', light: '#f4bdc6' },
+        { name: 'Clocktower Moon', near: '#32284f', light: '#f4daae' },
+    ],
 };
 const UPPER_REALM_PATHS = {
     winter: { mid: 'assets/themes/winter/winter-mid-terrain-v2.png', high: 'assets/themes/winter/winter-high-terrain.webp' },
@@ -36,6 +56,10 @@ const UPPER_FOOTHOLD_PATHS = {
     spring: 'assets/themes/spring/upper-foothold.webp',
     summer: 'assets/themes/summer/upper-foothold.webp',
     autumn: 'assets/themes/autumn/upper-foothold.webp',
+    'starlight-eve': 'assets/themes/starlight-eve/foothold.png',
+    'great-egg-hunt': 'assets/themes/great-egg-hunt/foothold.png',
+    'fireworks-fair': 'assets/themes/fireworks-fair/foothold.png',
+    'moonlit-masquerade': 'assets/themes/moonlit-masquerade/foothold.png',
 };
 const upperRealmArt = {};
 const upperFootholdArt = {};
@@ -49,9 +73,11 @@ let winterSkyWisps = null;
 const WINTER_PAINTING_WORLD_SPAN = 14000;
 const SEASON_SKY_COLOR = {
     winter: '#081e40', spring: '#3446a6', summer: '#76b7f5', autumn: '#231838',
+    'starlight-eve': '#111b40', 'great-egg-hunt': '#8495c9',
+    'fireworks-fair': '#142652', 'moonlit-masquerade': '#20152d',
 };
 const seasonContinuousArt = {};
-for (const theme of ['spring', 'summer', 'autumn']) {
+for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade']) {
     const world = new Image();
     const upper = new Image();
     const starfield = new Image();
@@ -62,6 +88,7 @@ for (const theme of ['spring', 'summer', 'autumn']) {
 }
 const continuousState = {
     winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle',
+    'starlight-eve': 'idle', 'great-egg-hunt': 'idle', 'fireworks-fair': 'idle', 'moonlit-masquerade': 'idle',
 };
 function loadContinuousSeason(theme) {
     if (continuousState[theme] !== 'idle')
@@ -69,9 +96,9 @@ function loadContinuousSeason(theme) {
     continuousState[theme] = 'loading';
     const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
         : seasonContinuousArt[theme];
-    art.world.src = `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
-    art.upper.src = `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
-    art.starfield.src = `assets/themes/${theme}/${theme}-starfield-v1.png`;
+    art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.png` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+    art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.png` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
+    art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.png` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
     void Promise.all([art.world, art.upper, art.starfield].map(image => image.decode())).then(() => {
         continuousState[theme] = 'ready';
     }).catch(error => {
@@ -315,9 +342,10 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
     const visibleWorldSpan = height / pixelsPerWorld;
     const skyY = (worldY) => height + (backdropCameraY - worldY) * pixelsPerWorld;
     const arrival = (worldY) => chapterEase((worldY - 33000) / 4000);
-    const offset = theme === 'spring' ? 11 : theme === 'summer' ? 47 : 83;
-    const colors = theme === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
-        : theme === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
+    const season = baseSeason(theme);
+    const offset = season === 'spring' ? 11 : season === 'summer' ? 47 : season === 'winter' ? 5 : 83;
+    const colors = season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
+        : season === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
             : ['255,181,107', '235,161,180', '255,217,150'];
     const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 3200));
     const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 3200);
@@ -353,7 +381,7 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
         ctx.translate(x, y);
         ctx.rotate(winterSkyHash(index * 41 + offset) * Math.PI);
         ctx.fillStyle = `rgba(${color},0.82)`;
-        if (theme === 'summer') {
+        if (season === 'summer' || season === 'winter') {
             ctx.beginPath();
             ctx.arc(0, 0, Math.max(2, radius * 0.18), 0, Math.PI * 2);
             ctx.fill();
@@ -368,9 +396,9 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
         }
         else {
             ctx.beginPath();
-            ctx.ellipse(0, 0, radius * (theme === 'spring' ? 0.38 : 0.48), radius, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, radius * (season === 'spring' ? 0.38 : 0.48), radius, 0, 0, Math.PI * 2);
             ctx.fill();
-            if (theme === 'autumn') {
+            if (season === 'autumn') {
                 ctx.strokeStyle = `rgba(${color},0.7)`;
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -404,7 +432,17 @@ function drawSeasonContinuousWorld(theme) {
     drawPanel(art.preparedUpper, 12000);
     // The final painting's feathered top reveals these later motifs gradually.
     drawSeasonHighSky(theme, pixelsPerWorld);
-    drawPanel(art.preparedStarfield, 23000);
+    if (isFestival(theme)) {
+        // One taller authored starfield carries each festival through Expedition's
+        // summit. It fades into the later motifs without repeating the painting.
+        const starHeight = imageHeight * 1.55;
+        const bottom = height + (backdropCameraY - 23000) * pixelsPerWorld;
+        if (bottom > 0 && bottom - starHeight < height) {
+            ctx.drawImage(art.preparedStarfield, x, bottom - starHeight, imageWidth, starHeight);
+        }
+    }
+    else
+        drawPanel(art.preparedStarfield, 23000);
 }
 function prepareUpperTerrainImage(image, fadeStart) {
     const canvas = document.createElement('canvas');
@@ -438,7 +476,7 @@ function prepareUpperTerrain(theme) {
         high: prepareUpperTerrainImage(art.high, 0.78),
     };
 }
-for (const theme of ['winter', 'spring', 'summer', 'autumn']) {
+for (const theme of ['winter', 'spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade']) {
     const mid = new Image();
     const high = new Image();
     const bridge = new Image();
@@ -470,11 +508,11 @@ function loadUpperRealm(theme) {
     mid.onload = check;
     high.onload = check;
     mid.onerror = high.onerror = () => { art.state = 'failed'; console.error(`${theme} upper realm art failed to load.`); };
-    mid.src = UPPER_REALM_PATHS[theme].mid;
-    high.src = UPPER_REALM_PATHS[theme].high;
+    mid.src = UPPER_REALM_PATHS[baseSeason(theme)].mid;
+    high.src = UPPER_REALM_PATHS[baseSeason(theme)].high;
     bridge.onload = check;
     bridge.onerror = () => { art.state = 'failed'; console.error(`${theme} bridge art failed to load.`); };
-    bridge.src = `assets/themes/${theme}/${theme}-bridge.webp`;
+    bridge.src = `assets/themes/${baseSeason(theme)}/${baseSeason(theme)}-bridge.webp`;
     const foothold = new Image();
     foothold.src = UPPER_FOOTHOLD_PATHS[theme];
     upperFootholdArt[theme] = foothold;
@@ -533,10 +571,12 @@ function drawUpperFoothold(x, y) {
     const w = Math.min(260, Math.max(185, width * 0.19));
     const h = w * image.naturalHeight / image.naturalWidth;
     // Align the flat center of each hand-painted ledge with Zima's feet.
-    const top = { winter: 0.404, spring: 0.379, summer: 0.413, autumn: 0.350 };
+    const top = { winter: 0.404, spring: 0.379, summer: 0.413, autumn: 0.350,
+        'starlight-eve': 0.42, 'great-egg-hunt': 0.40, 'fireworks-fair': 0.42, 'moonlit-masquerade': 0.40 };
     ctx.drawImage(image, x - w * 0.54, y - h * top[selectedTheme], w, h);
 }
 const PROGRESS_KEY = 'cats-changing-sky-progression-v1';
+const TEST_PROGRESS_BACKUP_KEY = 'cats-changing-sky-test-purchase-backup';
 const PROGRESSION_ITEMS = [
     { id: 'windstep', name: 'Windstep Boots', cost: 12, icon: 'windstep-boots.webp', slot: 'movement', description: 'Steer 8% faster in the air.' },
     { id: 'softstep', name: 'Softstep Boots', cost: 12, icon: 'softstep-boots.webp', slot: 'movement', description: 'Hold Shift to brake precisely in the air.' },
@@ -552,18 +592,25 @@ const GEAR_IDS = ['windstep', 'softstep', 'compass', 'echo'];
 const ENCHANTMENT_IDS = ['bellwake', 'softfall'];
 const SUPPLY_IDS = ['catBed', 'campProvision', 'routeReroll'];
 function freshProgress() {
-    return { version: 1, fish: 0, owned: [], movement: null, utility: null,
+    return { version: 2, fish: 0, owned: [], unlockedFestivals: [], movement: null, utility: null,
         enchantment: null, supplies: { catBed: 0, campProvision: 0, routeReroll: 0 } };
 }
 function loadProgress() {
     try {
+        const backup = localStorage.getItem(TEST_PROGRESS_BACKUP_KEY);
+        if (backup) {
+            localStorage.setItem(PROGRESS_KEY, backup);
+            localStorage.removeItem(TEST_PROGRESS_BACKUP_KEY);
+        }
         const raw = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
-        if (!raw || raw.version !== 1)
+        if (!raw || (raw.version !== 1 && raw.version !== 2))
             return freshProgress();
         const owned = Array.isArray(raw.owned) ? raw.owned.filter((id) => GEAR_IDS.includes(id) || ENCHANTMENT_IDS.includes(id)) : [];
         const supplies = Object.fromEntries(SUPPLY_IDS.map(id => [id,
             Number.isSafeInteger(raw.supplies?.[id]) ? Math.max(0, Math.min(99, raw.supplies[id])) : 0]));
-        return { version: 1, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0,
+        const unlockedFestivals = raw.version === 2 && Array.isArray(raw.unlockedFestivals)
+            ? raw.unlockedFestivals.filter((id) => ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'].includes(id)) : [];
+        return { version: 2, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals,
             owned, movement: owned.includes(raw.movement) ? raw.movement : null,
             utility: owned.includes(raw.utility) ? raw.utility : null,
             enchantment: owned.includes(raw.enchantment) ? raw.enchantment : null, supplies };
@@ -573,6 +620,28 @@ function loadProgress() {
     }
 }
 let progress = loadProgress();
+function restoreTestPurchases() {
+    if (!localStorage.getItem(TEST_PROGRESS_BACKUP_KEY))
+        return;
+    progress = loadProgress();
+    refreshProgressUi();
+}
+function festivalUnlocked(theme) {
+    return !isFestival(theme) || progress.unlockedFestivals.includes(theme) || (LOCAL_TEST_BUILD && devMode);
+}
+function unlockFestival(theme) {
+    if (progress.unlockedFestivals.includes(theme))
+        return true;
+    if (LOCAL_TEST_BUILD && devMode)
+        return true;
+    const cost = FESTIVAL_COST[theme];
+    if (progress.fish < cost)
+        return false;
+    progress.fish -= cost;
+    progress.unlockedFestivals.push(theme);
+    saveProgress();
+    return true;
+}
 function saveProgress() {
     try {
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
@@ -587,6 +656,7 @@ let runHighBand = 0;
 let runBirdRewards = 0;
 let runCampRewards = 0;
 let runEquipped = false;
+let runDebugged = false;
 let runBedUsed = false;
 let runFirstBell = true;
 let runEchoUsed = false;
@@ -610,6 +680,7 @@ function startProgressRun() {
     runBirdRewards = 0;
     runCampRewards = 0;
     runEquipped = !!(progress.movement || progress.utility || progress.enchantment);
+    runDebugged = LOCAL_TEST_BUILD && devMode;
     runBedUsed = false;
     runFirstBell = true;
     runEchoUsed = false;
@@ -623,7 +694,7 @@ function startProgressRun() {
     nextCrateWorldY = rand(FIRST_CRATE_MIN_Y, FIRST_CRATE_MAX_Y);
 }
 function awardFish(amount, reason) {
-    if (amount <= 0)
+    if (amount <= 0 || runDebugged)
         return;
     progress.fish = Math.min(Number.MAX_SAFE_INTEGER, progress.fish + amount);
     saveProgress();
@@ -678,13 +749,18 @@ function beginLaunchProgress() {
 }
 function purchaseItem(id) {
     const item = PROGRESSION_ITEMS.find(entry => entry.id === id);
-    if (!item || id === 'fish' || progress.fish < item.cost)
+    if (!item || id === 'fish' || progress.fish + devFish < item.cost)
         return false;
     if (item.slot && progress.owned.includes(id))
         return false;
     if (SUPPLY_IDS.includes(id) && progress.supplies[id] >= 9)
         return false;
-    progress.fish -= item.cost;
+    const testSpent = Math.min(devFish, item.cost);
+    if (testSpent > 0 && !localStorage.getItem(TEST_PROGRESS_BACKUP_KEY)) {
+        localStorage.setItem(TEST_PROGRESS_BACKUP_KEY, JSON.stringify(progress));
+    }
+    devFish -= testSpent;
+    progress.fish -= item.cost - testSpent;
     if (item.slot) {
         progress.owned.push(id);
         if (item.slot === 'movement')
@@ -783,6 +859,14 @@ function updateCrates() {
 }
 const progressionImages = {};
 const themedBedArt = {};
+const festivalBedArt = {};
+function loadFestivalBed(theme) {
+    if (!isFestival(theme) || festivalBedArt[theme])
+        return;
+    const image = new Image();
+    image.src = `assets/themes/${theme}/cat-bed.png`;
+    festivalBedArt[theme] = image;
+}
 for (const item of [...PROGRESSION_ITEMS, { id: 'fish', icon: 'fish.webp' }, { id: 'crate', icon: 'crate.webp' }]) {
     const image = new Image();
     image.src = `assets/progression/${item.icon}`;
@@ -851,7 +935,8 @@ function updateProgressEffects(dt) {
 function drawProgressEffects() {
     const x = cat.x, y = worldToScreenY(cat.y);
     if (runBedFxTime > 0 && progressionImages.catBed?.naturalWidth) {
-        let bed = themedBedArt[selectedTheme];
+        let bed = isFestival(selectedTheme) && festivalBedArt[selectedTheme]?.naturalWidth
+            ? festivalBedArt[selectedTheme] : themedBedArt[selectedTheme];
         if (!bed) {
             bed = document.createElement('canvas');
             bed.width = bed.height = 256;
@@ -957,7 +1042,7 @@ function activateInventorySlot(slot) {
         if (state === 'title')
             openProgressDialog('shop-overlay');
         else
-            showPowerupFeedback(`${progress.fish.toLocaleString()} fish. Spend them in Gear & supplies on the title screen.`);
+            showPowerupFeedback(`${progress.fish.toLocaleString()} earned fish${devFish ? ` plus ${devFish} temporary test fish` : ''}. Spend them in Gear & supplies on the title screen.`);
         return;
     }
     const item = PROGRESSION_ITEMS[slot - 1];
@@ -1044,12 +1129,12 @@ function refreshProgressUi() {
         balance.textContent = progress.fish.toLocaleString();
     const shopBalance = document.querySelector('#shop-balance');
     if (shopBalance)
-        shopBalance.textContent = progress.fish.toLocaleString();
+        shopBalance.textContent = `${progress.fish.toLocaleString()}${devFish ? ` + ${devFish} test` : ''}`;
     const shop = document.querySelector('#shop-items');
     if (shop && !document.querySelector('#shop-overlay')?.hidden)
         renderShop();
     const inventory = document.querySelector('#powerup-bar');
-    const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
+    const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${devFish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
     if (inventory && inventorySignature !== lastInventorySignature) {
         lastInventorySignature = inventorySignature;
         hideInventoryTooltip();
@@ -1094,7 +1179,7 @@ function refreshProgressUi() {
         const fish = document.createElement('button');
         fish.type = 'button';
         fish.className = 'powerup-cell fish-cell owned';
-        const fishDetail = `Press 0 or click to view your balance. ${progress.fish.toLocaleString()} fish available. Spend fish in Gear & supplies on the title screen.`;
+        const fishDetail = `Press 0 or click to view your balance. ${progress.fish.toLocaleString()} earned fish${devFish ? ` plus ${devFish} temporary test fish` : ''}. Spend fish in Gear & supplies on the title screen.`;
         fish.setAttribute('aria-label', `Fish. ${fishDetail}`);
         fish.setAttribute('aria-keyshortcuts', '0');
         fish.setAttribute('aria-describedby', 'powerup-tooltip');
@@ -1105,7 +1190,7 @@ function refreshProgressUi() {
         fishIcon.alt = '';
         const fishCount = document.createElement('span');
         fishCount.className = 'powerup-count';
-        fishCount.textContent = progress.fish.toLocaleString();
+        fishCount.textContent = (progress.fish + devFish).toLocaleString();
         fish.append(fishKey, fishIcon, fishCount);
         fish.addEventListener('click', () => activateInventorySlot(0));
         fish.addEventListener('mouseenter', () => showInventoryTooltip(fish, 'Fish', fishDetail));
@@ -1142,7 +1227,7 @@ function renderShop() {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = equipped ? 'Unequip' : owned ? 'Equip' : `Buy · ${item.cost} fish`;
-        button.disabled = !owned && (progress.fish < item.cost ||
+        button.disabled = !owned && (progress.fish + devFish < item.cost ||
             (!item.slot && progress.supplies[item.id] >= 9));
         button.addEventListener('click', () => { if (owned)
             equipItem(item.id);
@@ -1274,6 +1359,25 @@ function initProgressionUi() {
     document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
     document.getElementById('export-save')?.addEventListener('click', exportGameData);
     document.getElementById('reroll-route')?.addEventListener('click', () => activateInventorySlot(9));
+    document.getElementById('dev-seed-fish')?.addEventListener('click', () => {
+        if (!LOCAL_TEST_BUILD || !devMode)
+            return;
+        devFish += 100;
+        if (state !== 'title')
+            runDebugged = true;
+        refreshProgressUi();
+    });
+    document.getElementById('dev-flight-button')?.addEventListener('click', () => {
+        if (!LOCAL_TEST_BUILD || !devMode)
+            return;
+        devFlight = !devFlight;
+        runDebugged = true;
+        bounceHold = 0;
+        pendingBounce = 0;
+        if (devFlight && state === 'falling')
+            state = 'playing';
+        closeProgressDialogs();
+    });
     document.addEventListener('keydown', event => {
         const dialog = ['shop-overlay', 'settings-overlay']
             .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);
@@ -1771,11 +1875,11 @@ function drawPaintedBackdrop() {
     const top = height * 0.06;
     const h = Math.max(340, height * 0.64);
     if (art)
-        drawCoverImage(art, 0, top, width, h, selectedTheme === 'winter' ? 0.72 : 0.78);
+        drawCoverImage(art, 0, top, width, h, baseSeason(selectedTheme) === 'winter' ? 0.72 : 0.78);
     const wash = ctx.createLinearGradient(0, top, 0, top + h);
-    wash.addColorStop(0, selectedTheme === 'winter' ? 'rgba(4,15,29,.22)' : 'rgba(255,255,255,.04)');
+    wash.addColorStop(0, baseSeason(selectedTheme) === 'winter' ? 'rgba(4,15,29,.22)' : 'rgba(255,255,255,.04)');
     wash.addColorStop(0.72, 'rgba(255,255,255,0)');
-    wash.addColorStop(1, selectedTheme === 'winter' ? 'rgba(9,29,43,.28)' : selectedTheme === 'spring' ? 'rgba(82,136,123,.14)' : selectedTheme === 'summer' ? 'rgba(102,128,57,.12)' : 'rgba(116,65,30,.16)');
+    wash.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(9,29,43,.28)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(82,136,123,.14)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(102,128,57,.12)' : 'rgba(116,65,30,.16)');
     ctx.fillStyle = wash;
     ctx.fillRect(0, top, width, h);
 }
@@ -1790,7 +1894,7 @@ function drawPaintedGround(baseY) {
     const fade = ctx.createLinearGradient(0, y, 0, y + h);
     fade.addColorStop(0, 'rgba(255,255,255,0)');
     fade.addColorStop(0.82, 'rgba(255,255,255,0)');
-    fade.addColorStop(1, selectedTheme === 'winter' ? 'rgba(177,207,221,.30)' : selectedTheme === 'spring' ? 'rgba(84,146,86,.22)' : selectedTheme === 'summer' ? 'rgba(85,139,59,.20)' : 'rgba(129,78,34,.24)');
+    fade.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(177,207,221,.30)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(84,146,86,.22)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(85,139,59,.20)' : 'rgba(129,78,34,.24)');
     ctx.fillStyle = fade;
     ctx.fillRect(0, y, width, h);
 }
@@ -1823,7 +1927,7 @@ function drawNearSceneLayer(layer) {
     ctx.drawImage(layer.image, halfSource, 0, sourceWidth - halfSource, sourceHeight, width - halfDraw, y, halfDraw, drawHeight);
 }
 function drawSceneBackdrop(art) {
-    ctx.fillStyle = selectedTheme === 'winter' ? '#081e40' : selectedTheme === 'spring' ? '#849be0' : selectedTheme === 'summer' ? '#3a94e9' : '#4a2c50';
+    ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#081e40' : baseSeason(selectedTheme) === 'spring' ? '#849be0' : baseSeason(selectedTheme) === 'summer' ? '#3a94e9' : '#4a2c50';
     ctx.fillRect(0, 0, width, height);
     // The one painted sky travels below the camera as altitude increases.
     // A softened top edge leaves the atmosphere open without repeating clouds
@@ -1840,11 +1944,11 @@ function drawSceneGround(art) {
     const layerHeight = Math.max(270, height * art.groundHeight);
     // Align the painted center walking surface with Zima's world-space feet.
     drawCoverImage(art.ground, 0, groundY - layerHeight * art.groundSurface, width, layerHeight, 1, art.groundSurface);
-    if (selectedTheme === 'winter' || selectedTheme === 'spring')
+    if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')
         drawGroundCutouts(groundY, false);
 }
 function drawGroundCutouts(groundY, inFront) {
-    const detail = selectedTheme === 'winter' ? winterReeds : springFlowerBank;
+    const detail = baseSeason(selectedTheme) === 'winter' ? winterReeds : springFlowerBank;
     if (!detail.complete || !detail.naturalWidth || groundY < -120 || groundY > height + 130)
         return;
     const spots = inFront ? [0.07, 0.93] : [0.25, 0.75];
@@ -1887,7 +1991,7 @@ function groundFrontImage(art) {
         summer: [[0.13, -5, 0.085, 40], [0.87, -5, 0.085, 40]],
         autumn: [[0.09, -2, 0.075, 32], [0.91, -2, 0.075, 32]],
     };
-    for (const [cx, cy, rx, ry] of props[selectedTheme]) {
+    for (const [cx, cy, rx, ry] of props[baseSeason(selectedTheme)]) {
         m.save();
         m.translate(width * cx, surface + cy);
         m.scale(width * rx, ry);
@@ -1900,7 +2004,7 @@ function groundFrontImage(art) {
         m.restore();
     }
     // A few registered surface pixels overlap the paws instead of a drawn arc.
-    const winter = selectedTheme === 'winter';
+    const winter = baseSeason(selectedTheme) === 'winter';
     const lip = m.createLinearGradient(0, surface - (winter ? 20 : 13), 0, surface + (winter ? 15 : 10));
     lip.addColorStop(0, 'rgba(255,255,255,0)');
     lip.addColorStop(0.55, 'rgba(255,255,255,0.52)');
@@ -1919,13 +2023,13 @@ function drawSceneFront(art) {
     if (top > height || top + layerHeight < 0)
         return;
     ctx.drawImage(groundFrontImage(art), 0, top);
-    if (selectedTheme === 'winter' || selectedTheme === 'spring')
+    if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')
         drawGroundCutouts(groundY, true);
 }
 function drawSceneProp(art) {
     if (!art.prop)
         return;
-    const isSummer = selectedTheme === 'summer';
+    const isSummer = baseSeason(selectedTheme) === 'summer';
     const propHeight = height * (isSummer ? 0.25 : 0.20);
     const propWidth = propHeight * art.prop.naturalWidth / art.prop.naturalHeight;
     const x = width * (isSummer ? 0.33 : 0.73);
@@ -2116,6 +2220,10 @@ function expeditionGoalName(stage = expeditionStage) {
         spring: ['Cross Blossom Heights', 'Cross Petal Constellations', 'Reach Spring Crown'],
         summer: ['Cross Sunlit Heights', 'Cross Sapphire Clouds', 'Reach Summer Crown'],
         autumn: ['Cross Ember Heights', 'Cross Copper Constellations', 'Reach Autumn Crown'],
+        'starlight-eve': ['Cross Harbor Lights', 'Cross Astral Sea', 'Reach Starlight Crown'],
+        'great-egg-hunt': ['Cross Garden Heights', 'Cross Cloud Blossoms', 'Reach Conservatory Crown'],
+        'fireworks-fair': ['Cross Festival Pier', 'Cross Firework Sky', 'Reach Coastal Crown'],
+        'moonlit-masquerade': ['Cross Oak Canopy', 'Cross Lantern Sky', 'Reach Moonlit Crown'],
     };
     return names[selectedTheme][Math.min(2, stage)];
 }
@@ -2368,18 +2476,18 @@ function finishGame() {
 // Part of the single main.js extension bundle.
 function drawSky() {
     const g = ctx.createLinearGradient(0, 0, 0, height);
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         g.addColorStop(0, '#020912');
         g.addColorStop(0.46, '#09213a');
         g.addColorStop(1, '#17435a');
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         g.addColorStop(0, '#8fc8ef');
         g.addColorStop(0.40, '#bae6f4');
         g.addColorStop(0.82, '#d8f5e5');
         g.addColorStop(1, '#ecf8df');
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         g.addColorStop(0, '#3d9fe3');
         g.addColorStop(0.52, '#87d6ff');
         g.addColorStop(0.86, '#d8ef98');
@@ -2395,12 +2503,12 @@ function drawSky() {
     ctx.fillRect(0, 0, width, height);
     const vignette = ctx.createRadialGradient(width * 0.5, height * 0.35, 80, width * 0.5, height * 0.45, Math.max(width, height) * 0.72);
     vignette.addColorStop(0, 'rgba(255,255,255,0)');
-    vignette.addColorStop(1, selectedTheme === 'winter' ? 'rgba(0,10,20,.32)' : selectedTheme === 'spring' ? 'rgba(8,35,30,.14)' : selectedTheme === 'summer' ? 'rgba(28,46,12,.16)' : 'rgba(25,8,2,.18)');
+    vignette.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(0,10,20,.32)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(8,35,30,.14)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(28,46,12,.16)' : 'rgba(25,8,2,.18)');
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, width, height);
 }
 function drawStars() {
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         for (const s of stars) {
             const a = s.alpha + Math.sin(elapsed * 1.6 + s.twinkle) * 0.16;
             ctx.globalAlpha = Math.max(0.08, a);
@@ -2429,7 +2537,7 @@ function drawStars() {
         ctx.arc(moonX + 10, moonY - 5, 23, 0, TAU);
         ctx.fill();
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(255,255,255,.75)';
         for (let i = 0; i < 4; i++) {
@@ -2438,7 +2546,7 @@ function drawStars() {
             drawCloud(x, y, 0.9 + (i % 3) * 0.15);
         }
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         const sunX = width * 0.84;
         const sunY = height * 0.16;
         const rg = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 78);
@@ -2472,7 +2580,7 @@ function drawStars() {
 }
 function drawAurora() {
     ctx.save();
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         ctx.globalCompositeOperation = 'screen';
         ctx.globalAlpha = 0.10;
         for (let band = 0; band < 3; band++) {
@@ -2488,7 +2596,7 @@ function drawAurora() {
             ctx.stroke();
         }
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         ctx.globalAlpha = 0.18;
         for (let i = 0; i < 5; i++) {
             ctx.strokeStyle = i % 2 === 0 ? '#d9f7ff' : '#f7d4f1';
@@ -2501,7 +2609,7 @@ function drawAurora() {
             ctx.stroke();
         }
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         ctx.globalAlpha = 0.12;
         ctx.strokeStyle = '#fff7c0';
         for (let i = 0; i < 5; i++) {
@@ -2534,10 +2642,10 @@ function drawFarMountains() {
     const base = height * 0.73 + parallax * 0.08;
     drawPaintedBackdrop();
     // far haze
-    ctx.globalAlpha = selectedTheme === 'winter' ? 0.22 : 0.18;
+    ctx.globalAlpha = baseSeason(selectedTheme) === 'winter' ? 0.22 : 0.18;
     const haze = ctx.createLinearGradient(0, base - 180, 0, base + 20);
     haze.addColorStop(0, 'rgba(255,255,255,.00)');
-    haze.addColorStop(1, selectedTheme === 'winter' ? 'rgba(214,235,248,.22)' : selectedTheme === 'spring' ? 'rgba(224,246,255,.18)' : selectedTheme === 'summer' ? 'rgba(255,247,211,.18)' : 'rgba(255,223,185,.16)');
+    haze.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(214,235,248,.22)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(224,246,255,.18)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(255,247,211,.18)' : 'rgba(255,223,185,.16)');
     ctx.fillStyle = haze;
     ctx.fillRect(0, base - 180, width, 220);
     // back range
@@ -2550,7 +2658,7 @@ function drawFarMountains() {
     }
     ctx.lineTo(width, height);
     ctx.closePath();
-    ctx.fillStyle = selectedTheme === 'winter' ? '#183d56' : selectedTheme === 'spring' ? '#8eb4be' : selectedTheme === 'summer' ? '#9db783' : '#b08261';
+    ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#183d56' : baseSeason(selectedTheme) === 'spring' ? '#8eb4be' : baseSeason(selectedTheme) === 'summer' ? '#9db783' : '#b08261';
     ctx.fill();
     // mid range
     ctx.globalAlpha = 0.16;
@@ -2562,19 +2670,19 @@ function drawFarMountains() {
     }
     ctx.lineTo(width, height);
     ctx.closePath();
-    ctx.fillStyle = selectedTheme === 'winter' ? '#113047' : selectedTheme === 'spring' ? '#749ca6' : selectedTheme === 'summer' ? '#78956d' : '#94694a';
+    ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#113047' : baseSeason(selectedTheme) === 'spring' ? '#749ca6' : baseSeason(selectedTheme) === 'summer' ? '#78956d' : '#94694a';
     ctx.fill();
     // seasonal landmarks for depth
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         drawStoneBridge(width * 0.18, base + 18, 1.25, '#718bad', '#547092');
         drawVillageSilhouette(width * 0.62, base + 6, 0.9, '#ffd79d', '#314965');
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         drawStoneBridge(width * 0.20, base + 16, 1.1, '#7898a6', '#6f8896');
         drawVillageSilhouette(width * 0.70, base + 8, 0.85, '#ffd6b5', '#7697a4');
         drawWaterRibbon(base + 4, 0.22, 'rgba(201,235,245,.40)', 'rgba(255,255,255,.0)');
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         drawWaterRibbon(base + 18, 0.18, 'rgba(126,190,236,.42)', 'rgba(255,255,255,0)');
         drawVillageSilhouette(width * 0.62, base + 14, 0.92, '#f7cda1', '#7f9a75');
         drawWindmill(width * 0.80, base - 18, 0.9, 0.28);
@@ -2592,7 +2700,7 @@ function drawPines() {
     const baseY = worldToScreenY(0) + 8;
     ctx.save();
     drawPaintedGround(baseY);
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         for (let i = -1; i < Math.ceil(width / 70) + 2; i++) {
             const x = i * 70 + ((i % 2) * 18);
             const h = 98 + ((i * 37) % 55 + 55) % 55;
@@ -2606,7 +2714,7 @@ function drawPines() {
         groundG.addColorStop(1, 'rgba(120,177,198,.18)');
         ctx.fillStyle = groundG;
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         for (let i = -1; i < Math.ceil(width / 95) + 2; i++)
             if (i % 2 === 0)
                 drawBlossomTree(i * 95 + ((i % 2) * 24), baseY + 6, 0.72 + (i % 3) * 0.05);
@@ -2620,7 +2728,7 @@ function drawPines() {
         groundG.addColorStop(1, 'rgba(111,168,103,.16)');
         ctx.fillStyle = groundG;
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         for (let i = -1; i < Math.ceil(width / 88) + 2; i++)
             if (i % 2 === 0)
                 drawSunflowerCluster(i * 88 + ((i % 2) * 16), baseY + 2, 0.74 + (i % 3) * 0.05);
@@ -2983,7 +3091,7 @@ function drawSnowBankDetail(baseY) {
 }
 function drawGroundDetail(baseY) {
     ctx.save();
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         ctx.fillStyle = 'rgba(214,239,248,.72)';
         for (let i = 0; i < 6; i++) {
             ctx.beginPath();
@@ -2991,10 +3099,10 @@ function drawGroundDetail(baseY) {
             ctx.fill();
         }
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         drawFlowerMeadow(width * 0.84, baseY + 20, 1.1, ['#f3b9de', '#ffffff', '#8dbbff']);
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         drawFlowerMeadow(width * 0.50, baseY + 20, 1.15, ['#ffffff', '#ffe06d', '#b183d0']);
     }
     else {
@@ -3162,7 +3270,7 @@ function drawBell(x, y, bell, t) {
     ctx.shadowColor = 'rgba(0,0,0,.18)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = 3;
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         const sway = Math.sin(t * 1.95 + bell.phase) * 0.055;
         ctx.rotate(sway + Math.sin(t * 6.2 + bell.phase) * 0.018);
         const h = bell.h, w = bell.w;
@@ -3233,7 +3341,7 @@ function drawBell(x, y, bell, t) {
         ctx.arc(0, h * 0.45, Math.max(3, w * 0.065), 0, TAU);
         ctx.fill();
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         const size = bell.w * 0.48;
         ctx.lineWidth = 2.1;
         if (bell.kind === 'bronze') {
@@ -3303,7 +3411,7 @@ function drawBell(x, y, bell, t) {
             ctx.fill();
         }
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         const size = bell.w * 0.50;
         ctx.lineWidth = 2.1;
         if (bell.kind === 'bronze') {
@@ -3434,7 +3542,7 @@ function drawMoth(x, y, phase, vx, kind) {
     ctx.shadowColor = 'rgba(0,0,0,.18)';
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 2;
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         const flap = Math.sin(phase) * 0.72;
         const pulse = 0.78 + Math.sin(phase * 0.5) * 0.16;
         const glow = ctx.createRadialGradient(0, 0, 3, 0, 0, 54);
@@ -3489,7 +3597,7 @@ function drawMoth(x, y, phase, vx, kind) {
         ctx.closePath();
         ctx.fill();
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         const wing = Math.sin(phase * 1.7) * 0.6;
         const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 42);
         glow.addColorStop(0, 'rgba(179,232,255,.32)');
@@ -3531,7 +3639,7 @@ function drawMoth(x, y, phase, vx, kind) {
         ctx.quadraticCurveTo(8, -24, 12, -24);
         ctx.stroke();
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         const flap = Math.sin(phase * 1.9) * 0.26;
         ctx.rotate(flap);
         ctx.fillStyle = '#29365a';
@@ -4026,7 +4134,7 @@ function drawCat(x, y, vx, vy) {
     if (grounded) {
         ctx.save();
         ctx.translate(x, y);
-        const alpha = selectedTheme === 'winter' ? 0.30 : selectedTheme === 'spring' ? 0.25 : selectedTheme === 'summer' ? 0.27 : 0.28;
+        const alpha = baseSeason(selectedTheme) === 'winter' ? 0.30 : baseSeason(selectedTheme) === 'spring' ? 0.25 : baseSeason(selectedTheme) === 'summer' ? 0.27 : 0.28;
         drawShadow(25 + Math.abs(vx) * 0.012, alpha, 4);
         ctx.restore();
     }
@@ -4464,6 +4572,10 @@ function drawExpeditionComplete() {
         spring: `${CHARACTER_META[selectedCharacter].name} reaches the Spring Crown beyond the blossom sky.`,
         summer: `${CHARACTER_META[selectedCharacter].name} reaches the Summer Crown beyond the sapphire clouds.`,
         autumn: `${CHARACTER_META[selectedCharacter].name} reaches the Autumn Crown beyond the copper stars.`,
+        'starlight-eve': `${CHARACTER_META[selectedCharacter].name} reaches the Starlight Crown above the harbor.`,
+        'great-egg-hunt': `${CHARACTER_META[selectedCharacter].name} reaches the Conservatory Crown beyond the clouds.`,
+        'fireworks-fair': `${CHARACTER_META[selectedCharacter].name} reaches the Coastal Crown above the fair.`,
+        'moonlit-masquerade': `${CHARACTER_META[selectedCharacter].name} reaches the Moonlit Crown beyond the oak.`,
     };
     ctx.fillStyle = themeMeta().accent;
     ctx.font = '600 15px ui-rounded, system-ui, sans-serif';
@@ -4715,7 +4827,7 @@ const SCARF_COLORS = {
 const scarfArtCache = new Map();
 const MAX_SCARF_TINT_CELLS = 72;
 function seasonalScarfArt(image, key, frame) {
-    if (selectedTheme === 'winter' || !image.naturalWidth)
+    if (baseSeason(selectedTheme) === 'winter' || !image.naturalWidth)
         return image;
     const cached = scarfArtCache.get(key);
     if (cached) {
@@ -4736,7 +4848,7 @@ function seasonalScarfArt(image, key, frame) {
         paint.drawImage(image, 0, 0, result.width, result.height);
     const pixels = paint.getImageData(0, 0, result.width, result.height);
     const data = pixels.data;
-    const color = SCARF_COLORS[selectedTheme];
+    const color = SCARF_COLORS[baseSeason(selectedTheme)];
     const limit = key.startsWith('fall') ? 0.73 : frame ? 0.78 : 0.80;
     const rowStride = result.width * 4;
     for (let y = 0; y < result.height; y++) {
@@ -4767,12 +4879,26 @@ function seasonalScarfArt(image, key, frame) {
     }
     return result;
 }
-const THEME_ORDER = ['winter', 'spring', 'summer', 'autumn'];
+const FESTIVAL_ORDER = ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'];
+const THEME_ORDER = ['winter', 'starlight-eve', 'spring', 'great-egg-hunt', 'summer', 'fireworks-fair', 'autumn', 'moonlit-masquerade'];
+const FESTIVAL_BASE = {
+    'starlight-eve': 'winter', 'great-egg-hunt': 'spring',
+    'fireworks-fair': 'summer', 'moonlit-masquerade': 'autumn',
+};
+function isFestival(theme) { return theme in FESTIVAL_BASE; }
+function baseSeason(theme) { return isFestival(theme) ? FESTIVAL_BASE[theme] : theme; }
+const FESTIVAL_COST = {
+    'starlight-eve': 30, 'great-egg-hunt': 45, 'fireworks-fair': 60, 'moonlit-masquerade': 75,
+};
 const THEME_META = {
     winter: { label: 'Winter', subtitle: 'Moonlit snow and ringing bells', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Aurora Bird', accent: '#9fe8da', card: '#173c56' },
     spring: { label: 'Spring', subtitle: 'Rain, blossoms, and dragonflies', normal: 'Raindrop', medium: 'Blossom', strong: 'Glow Bloom', airborne: 'Dragonfly', accent: '#ff96cf', card: '#2b5f60' },
     summer: { label: 'Summer', subtitle: 'Sunflowers, swallows, and warm fields', normal: 'Sunflower', medium: 'Golden Bloom', strong: 'Radiant Flower', airborne: 'Swallow', accent: '#ffd36d', card: '#5c7c2f' },
     autumn: { label: 'Autumn', subtitle: 'Pumpkins, crows, and harvest fields', normal: 'Pumpkin', medium: 'Harvest Gourd', strong: "Jack-o'-Lantern", airborne: 'Crow', accent: '#ffb062', card: '#75411c' },
+    'starlight-eve': { label: 'Starlight Eve', subtitle: 'An alpine harbor beneath an astronomical lighthouse', normal: 'Star Bell', medium: 'Moon Bell', strong: 'Astral Bell', airborne: 'Snowy Owl', accent: '#b9dfff', card: '#26365b' },
+    'great-egg-hunt': { label: 'Great Egg Hunt', subtitle: 'Terraced gardens and a cliffside conservatory', normal: 'Painted Egg', medium: 'Bloom Egg', strong: 'Golden Egg', airborne: 'Garden Butterfly', accent: '#f6a3b4', card: '#53705a' },
+    'fireworks-fair': { label: 'Fireworks Fair', subtitle: 'A coastal pier under a summer festival sky', normal: 'Pinwheel', medium: 'Festival Wheel', strong: 'Radiant Wheel', airborne: 'Flying Fish', accent: '#ffc778', card: '#345a83' },
+    'moonlit-masquerade': { label: 'Moonlit Masquerade', subtitle: 'Treehouses and lanterns above an autumn forest', normal: 'Lantern', medium: 'Moon Lantern', strong: 'Ghost Lantern', airborne: 'Friendly Bat', accent: '#e4a5d6', card: '#51395d' },
 };
 const CHARACTER_ORDER = ['zima', 'earl-grey', 'betty-davis', 'gracie-bell'];
 const CHARACTER_META = {
@@ -4856,7 +4982,7 @@ const GRACIE_RIBBON_BOUNDS = {
 };
 function seasonalCompanionArt(character, pose, sourceOverride) {
     const source = sourceOverride ?? companionArt[character][pose];
-    if ((selectedTheme === 'autumn' && character === 'gracie-bell') || (selectedTheme === 'spring' && character === 'betty-davis'))
+    if ((baseSeason(selectedTheme) === 'autumn' && character === 'gracie-bell') || (baseSeason(selectedTheme) === 'spring' && character === 'betty-davis'))
         return source;
     const key = `${character}:${pose}:${selectedTheme}:${sourceOverride?.src ?? 'base'}`;
     const cached = companionTintCache.get(key);
@@ -4869,7 +4995,7 @@ function seasonalCompanionArt(character, pose, sourceOverride) {
     paint.drawImage(source, 0, 0);
     const pixels = paint.getImageData(0, 0, result.width, result.height);
     const data = pixels.data;
-    const target = COMPANION_CLOTH[character][selectedTheme];
+    const target = COMPANION_CLOTH[character][baseSeason(selectedTheme)];
     for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] < 16)
             continue;
@@ -4921,15 +5047,23 @@ const SCENE_ASSET_PATHS = {
     spring: { sky: 'assets/themes/spring/sky.webp', far: 'assets/themes/spring/far.webp', mid: 'assets/themes/spring/mid.webp', near: 'assets/themes/spring/near.webp', ground: 'assets/themes/spring/ground.webp' },
     summer: { sky: 'assets/themes/summer/sky.webp', far: 'assets/themes/summer/far.webp', mid: 'assets/themes/summer/mid.webp', near: 'assets/themes/summer/near.webp', ground: 'assets/themes/summer/ground.webp', prop: 'assets/themes/summer/windmill-prop.webp' },
     autumn: { sky: 'assets/themes/autumn/sky.webp', far: 'assets/themes/autumn/far.webp', mid: 'assets/themes/autumn/mid.webp', near: 'assets/themes/autumn/near.webp', ground: 'assets/themes/autumn/ground.webp', prop: 'assets/themes/autumn/scarecrow-prop.webp' },
+    'starlight-eve': { sky: 'assets/themes/winter/sky.webp', far: 'assets/themes/winter/far-mountains.webp', mid: 'assets/themes/winter/mid-village.webp', near: 'assets/themes/winter/mid-pines.webp', ground: 'assets/themes/starlight-eve/ground.png' },
+    'great-egg-hunt': { sky: 'assets/themes/spring/sky.webp', far: 'assets/themes/spring/far.webp', mid: 'assets/themes/spring/mid.webp', near: 'assets/themes/spring/near.webp', ground: 'assets/themes/great-egg-hunt/ground.png' },
+    'fireworks-fair': { sky: 'assets/themes/summer/sky.webp', far: 'assets/themes/summer/far.webp', mid: 'assets/themes/summer/mid.webp', near: 'assets/themes/summer/near.webp', ground: 'assets/themes/fireworks-fair/ground.png' },
+    'moonlit-masquerade': { sky: 'assets/themes/autumn/sky.webp', far: 'assets/themes/autumn/far.webp', mid: 'assets/themes/autumn/mid.webp', near: 'assets/themes/autumn/near.webp', ground: 'assets/themes/moonlit-masquerade/ground.png' },
 };
 const SCENE_LAYOUT = {
     winter: { far: [0.15, 0.76], mid: [0.36, 0.62], near: [0.18, 0.70], groundSurface: 0.75 },
     spring: { far: [0.15, 0.75], mid: [0.32, 0.65], near: [0.00, 0.90], groundSurface: 0.70 },
     summer: { far: [0.15, 0.75], mid: [0.34, 0.64], near: [0.10, 0.80], groundSurface: 0.69 },
     autumn: { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
+    'starlight-eve': { far: [0.15, 0.76], mid: [0.36, 0.62], near: [0.18, 0.70], groundSurface: 0.75 },
+    'great-egg-hunt': { far: [0.15, 0.75], mid: [0.32, 0.65], near: [0.00, 0.90], groundSurface: 0.70 },
+    'fireworks-fair': { far: [0.15, 0.75], mid: [0.34, 0.64], near: [0.10, 0.80], groundSurface: 0.69 },
+    'moonlit-masquerade': { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
 };
 const sceneAssets = {};
-const sceneAssetState = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
+const sceneAssetState = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle']));
 let groundFrontCache = null;
 const winterReeds = new Image();
 winterReeds.src = 'assets/themes/winter/winter-snow-reeds.webp';
@@ -5004,7 +5138,7 @@ function loadSceneAssets(theme) {
             ground,
             prop,
             groundSurface: layout.groundSurface,
-            groundHeight: 0.46,
+            groundHeight: theme === 'moonlit-masquerade' ? 0.90 : 0.46,
         };
         sceneAssetState[theme] = 'ready';
     }).catch(error => {
@@ -5023,8 +5157,8 @@ function ensureLegacyArt(theme) {
     if (THEME_ART[theme])
         return;
     THEME_ART[theme] = {
-        bg: loadThemeImage(`assets/seasonal/${theme}-painted-bg.png`),
-        ground: loadThemeImage(`assets/seasonal/${theme}-painted-ground.png`),
+        bg: loadThemeImage(`assets/seasonal/${baseSeason(theme)}-painted-bg.png`),
+        ground: loadThemeImage(`assets/seasonal/${baseSeason(theme)}-painted-ground.png`),
     };
 }
 const OBJECT_BOUNDS = {
@@ -5032,15 +5166,23 @@ const OBJECT_BOUNDS = {
     spring: [{ x: 138, y: 74, w: 391, h: 601 }, { x: 693, y: 87, w: 605, h: 584 }, { x: 1368, y: 63, w: 645, h: 606 }],
     summer: [{ x: 25, y: 60, w: 630, h: 625 }, { x: 698, y: 77, w: 667, h: 609 }, { x: 1365, y: 40, w: 670, h: 680 }],
     autumn: [{ x: 59, y: 74, w: 623, h: 603 }, { x: 682, y: 27, w: 582, h: 677 }, { x: 1376, y: 72, w: 618, h: 614 }],
+    'starlight-eve': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+    'great-egg-hunt': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+    'fireworks-fair': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
+    'moonlit-masquerade': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
 };
 const INTERACTION_ASSET_PATHS = {
     winter: { objects: 'assets/themes/winter/objects-atlas.webp', airborne: 'assets/themes/winter/airborne-atlas.webp' },
     spring: { objects: 'assets/themes/spring/objects-atlas.webp', airborne: 'assets/themes/spring/airborne-atlas.webp' },
     summer: { objects: 'assets/themes/summer/objects-atlas.webp', airborne: 'assets/themes/summer/airborne-atlas.webp' },
     autumn: { objects: 'assets/themes/autumn/objects-atlas.webp', airborne: 'assets/themes/autumn/airborne-atlas.webp' },
+    'starlight-eve': { objects: 'assets/themes/starlight-eve/targets.png', airborne: 'assets/themes/starlight-eve/visitor.png' },
+    'great-egg-hunt': { objects: 'assets/themes/great-egg-hunt/targets.png', airborne: 'assets/themes/great-egg-hunt/visitor.png' },
+    'fireworks-fair': { objects: 'assets/themes/fireworks-fair/targets.png', airborne: 'assets/themes/fireworks-fair/visitor.png' },
+    'moonlit-masquerade': { objects: 'assets/themes/moonlit-masquerade/targets.png', airborne: 'assets/themes/moonlit-masquerade/visitor.png' },
 };
 const interactionAssets = {};
-const interactionAssetState = { winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle' };
+const interactionAssetState = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle']));
 function loadInteractionAssets(theme) {
     if (interactionAssetState[theme] !== 'idle')
         return;
@@ -5059,6 +5201,7 @@ function loadSelectedThemeArt(theme) {
     loadInteractionAssets(theme);
     loadContinuousSeason(theme);
     loadUpperRealm(theme);
+    loadFestivalBed(theme);
 }
 function selectedArtLoading() {
     return interactionAssetState[selectedTheme] === 'loading' || sceneAssetState[selectedTheme] === 'loading'
@@ -5151,10 +5294,14 @@ let fieldDrop = 0;
 let bounceChain = 0;
 let pendingBounce = 0;
 let paused = false;
+const LOCAL_TEST_BUILD = globalThis.SKYBELLS_LOCAL_TEST_BUILD === true;
+let devMode = false;
+let devFlight = false;
+let devFish = 0;
 const savedTheme = localStorage.getItem('zima-skybells-theme');
 const savedMode = localStorage.getItem('zima-skybells-mode');
 const savedCharacter = localStorage.getItem('zima-skybells-character');
-let selectedTheme = THEME_ORDER.includes(savedTheme) ? savedTheme : 'winter';
+let selectedTheme = THEME_ORDER.includes(savedTheme) && festivalUnlocked(savedTheme) ? savedTheme : 'winter';
 let selectedMode = savedMode === 'zen' || savedMode === 'expedition' ? savedMode : 'classic';
 let selectedCharacter = CHARACTER_ORDER.includes(savedCharacter) ? savedCharacter : 'zima';
 loadSelectedThemeArt(selectedTheme);
@@ -5226,6 +5373,14 @@ let lastMenuUi = '';
 let lastBoardUi = '';
 let lastHotbarContext = '';
 function syncDomUi() {
+    const devControls = document.querySelector('#dev-controls');
+    if (devControls)
+        devControls.hidden = !(LOCAL_TEST_BUILD && devMode);
+    const devStatus = document.querySelector('#dev-status');
+    if (devStatus) {
+        devStatus.hidden = !(LOCAL_TEST_BUILD && devMode);
+        devStatus.textContent = `LOCAL TEST · ${devFlight ? 'FLIGHT ON (W/S)' : 'F: FLIGHT'} · ${devFish} test fish`;
+    }
     const inventory = document.querySelector('#powerup-bar');
     if (inventory)
         inventory.hidden = state === 'title';
@@ -5239,11 +5394,20 @@ function syncDomUi() {
     }
     if (menuOverlay) {
         menuOverlay.hidden = state !== 'title' || scoreboardOpen;
-        const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}`;
+        const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}|${progress.fish}|${progress.unlockedFestivals.join(',')}|${devMode}`;
         if (signature !== lastMenuUi) {
             lastMenuUi = signature;
             menuOverlay.style.setProperty('--accent', themeMeta().accent);
-            menuOverlay.querySelectorAll('[data-season]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.season === selectedTheme)));
+            menuOverlay.querySelectorAll('[data-season]').forEach(button => {
+                const theme = button.dataset.season;
+                const locked = !festivalUnlocked(theme);
+                button.setAttribute('aria-pressed', String(theme === selectedTheme));
+                button.classList.toggle('locked', locked);
+                button.setAttribute('aria-label', locked ? `${THEME_META[theme].label}. Unlock for ${FESTIVAL_COST[theme]} fish.` : THEME_META[theme].label);
+                const hint = button.querySelector('small');
+                if (hint)
+                    hint.textContent = locked ? `Unlock: ${FESTIVAL_COST[theme]} fish` : `${THEME_META[theme].normal} / ${THEME_META[theme].airborne}`;
+            });
             menuOverlay.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === selectedMode)));
             menuOverlay.querySelectorAll('[data-character]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.character === selectedCharacter)));
             const desc = menuOverlay.querySelector('#menu-description');
@@ -5352,7 +5516,7 @@ if (menuOverlay) {
         const hint = document.createElement('small');
         hint.textContent = `${THEME_META[theme].normal} · ${THEME_META[theme].airborne}`;
         button.append(name, hint);
-        button.addEventListener('click', () => setTheme(theme));
+        button.addEventListener('click', () => chooseTheme(theme));
         seasonOptions?.append(button);
     }
     const modeOptions = menuOverlay.querySelector('#mode-options');
@@ -5410,7 +5574,7 @@ function formatScore(value) { return value.toLocaleString('en-US'); }
 function tierPoints(kind) { return kind === 'crystal' ? 30 : kind === 'silver' ? 20 : 10; }
 function awardPoints(base) {
     score += BigInt(base) * BigInt(multiplier);
-    if (selectedMode !== 'expedition' && score > bestByMode[selectedMode])
+    if (!runDebugged && selectedMode !== 'expedition' && score > bestByMode[selectedMode])
         bestByMode[selectedMode] = score;
 }
 const cat = {
@@ -5437,9 +5601,38 @@ function rand(min = 0, max = 1) {
 function themeMeta() {
     return THEME_META[selectedTheme];
 }
+function releaseFestivalAssets(theme) {
+    if (!isFestival(theme))
+        return;
+    // Keep only the active festival's large paintings decoded during long play.
+    if (continuousState[theme] === 'ready') {
+        const art = seasonContinuousArt[theme];
+        art.world = new Image();
+        art.upper = new Image();
+        art.starfield = new Image();
+        continuousState[theme] = 'idle';
+    }
+    if (sceneAssetState[theme] === 'ready') {
+        delete sceneAssets[theme];
+        sceneAssetState[theme] = 'idle';
+    }
+    if (interactionAssetState[theme] === 'ready') {
+        delete interactionAssets[theme];
+        interactionAssetState[theme] = 'idle';
+    }
+    if (upperRealmArt[theme].state === 'ready') {
+        upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+        delete upperFootholdArt[theme];
+    }
+    delete festivalBedArt[theme];
+}
 function setTheme(theme) {
-    if (selectedTheme !== theme)
+    if (!festivalUnlocked(theme))
+        return;
+    if (selectedTheme !== theme) {
         releasePreparedSeason(selectedTheme);
+        releaseFestivalAssets(selectedTheme);
+    }
     selectedTheme = theme;
     loadSelectedThemeArt(theme);
     refreshProgressUi();
@@ -5449,6 +5642,20 @@ function setTheme(theme) {
     rebuildBackdrop();
     prepareUpperTerrain(theme);
     resetMusicForTheme();
+}
+function chooseTheme(theme) {
+    if (isFestival(theme) && !festivalUnlocked(theme)) {
+        if (!unlockFestival(theme)) {
+            const feedback = document.querySelector('#unlock-feedback');
+            if (feedback)
+                feedback.textContent = `${THEME_META[theme].label} needs ${FESTIVAL_COST[theme]} fish. You have ${progress.fish}.`;
+            return;
+        }
+        const feedback = document.querySelector('#unlock-feedback');
+        if (feedback)
+            feedback.textContent = `${THEME_META[theme].label} unlocked!`;
+    }
+    setTheme(theme);
 }
 function setGameMode(mode) {
     selectedMode = mode;
@@ -5463,7 +5670,7 @@ function setCharacter(character) {
     localStorage.setItem('zima-skybells-character', character);
 }
 function recordScore() {
-    if (score <= 0n || bellCount <= 0)
+    if (runDebugged || score <= 0n || bellCount <= 0)
         return;
     if (selectedMode === 'expedition' && state !== 'expeditionComplete')
         return;
@@ -5523,20 +5730,22 @@ function returnToTitle() {
     groundTravel = 0;
     nextGroundStep = 38;
     setAnimState('idle');
+    if (!festivalUnlocked(selectedTheme))
+        setTheme(baseSeason(selectedTheme));
 }
 function pointInRect(x, y, r) {
     return !!r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 function seasonStroke() {
-    return selectedTheme === 'winter' ? '#eff9ff' : selectedTheme === 'spring' ? '#ffffff' : selectedTheme === 'summer' ? '#fff6cc' : '#fff0cf';
+    return baseSeason(selectedTheme) === 'winter' ? '#eff9ff' : baseSeason(selectedTheme) === 'spring' ? '#ffffff' : baseSeason(selectedTheme) === 'summer' ? '#fff6cc' : '#fff0cf';
 }
 function seasonPanelFill(alpha = 0.50) {
     const a = alpha.toFixed(2);
-    if (selectedTheme === 'winter')
+    if (baseSeason(selectedTheme) === 'winter')
         return `rgba(5,19,32,${a})`;
-    if (selectedTheme === 'spring')
+    if (baseSeason(selectedTheme) === 'spring')
         return `rgba(29,67,73,${a})`;
-    if (selectedTheme === 'summer')
+    if (baseSeason(selectedTheme) === 'summer')
         return `rgba(58,72,22,${a})`;
     return `rgba(64,35,18,${a})`;
 }
@@ -5559,7 +5768,7 @@ function resize() {
     }
 }
 function rebuildBackdrop() {
-    const starCount = selectedTheme === 'winter' ? Math.floor((width * height) / 7500) : selectedTheme === 'summer' ? Math.floor((width * height) / 22000) : Math.floor((width * height) / 18000);
+    const starCount = baseSeason(selectedTheme) === 'winter' ? Math.floor((width * height) / 7500) : baseSeason(selectedTheme) === 'summer' ? Math.floor((width * height) / 22000) : Math.floor((width * height) / 18000);
     stars = Array.from({ length: starCount }, () => ({
         x: Math.random() * width,
         y: Math.random() * height * 0.65,
@@ -5567,13 +5776,13 @@ function rebuildBackdrop() {
         twinkle: Math.random() * TAU,
         alpha: Math.random() * 0.5 + 0.2,
     }));
-    const particleCount = Math.floor((width * height) / (selectedTheme === 'spring' ? 5200 : selectedTheme === 'autumn' ? 5600 : selectedTheme === 'summer' ? 7200 : 6800));
+    const particleCount = Math.floor((width * height) / (baseSeason(selectedTheme) === 'spring' ? 5200 : baseSeason(selectedTheme) === 'autumn' ? 5600 : baseSeason(selectedTheme) === 'summer' ? 7200 : 6800));
     snow = Array.from({ length: particleCount }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
         r: Math.random() * 2 + 0.8,
-        speed: selectedTheme === 'winter' ? Math.random() * 26 + 14 : selectedTheme === 'spring' ? Math.random() * 120 + 90 : selectedTheme === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
-        drift: selectedTheme === 'winter' ? Math.random() * 20 + 8 : selectedTheme === 'spring' ? Math.random() * 10 + 3 : selectedTheme === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
+        speed: baseSeason(selectedTheme) === 'winter' ? Math.random() * 26 + 14 : selectedTheme === 'great-egg-hunt' ? Math.random() * 45 + 28 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 120 + 90 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
+        drift: baseSeason(selectedTheme) === 'winter' ? Math.random() * 20 + 8 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 10 + 3 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
         phase: Math.random() * TAU,
         alpha: Math.random() * 0.45 + 0.18,
     }));
@@ -5676,15 +5885,15 @@ function addSeasonBurst(x, y, intensity = 1) {
         const speed = rand(55, 170) * intensity;
         let kind = 'spark';
         let color = '#ffffff';
-        if (selectedTheme === 'winter') {
+        if (baseSeason(selectedTheme) === 'winter') {
             kind = 'snow';
             color = i % 3 === 0 ? '#d8f5ff' : '#ffffff';
         }
-        else if (selectedTheme === 'spring') {
+        else if (baseSeason(selectedTheme) === 'spring') {
             kind = i % 3 === 0 ? 'droplet' : 'petal';
             color = kind === 'droplet' ? '#8ddcff' : (i % 2 ? '#ffd0e8' : '#ffffff');
         }
-        else if (selectedTheme === 'summer') {
+        else if (baseSeason(selectedTheme) === 'summer') {
             kind = 'pollen';
             color = i % 3 === 0 ? '#fff7b8' : '#ffd75c';
         }
@@ -5709,11 +5918,11 @@ function emitGroundStep() {
     const side = groundStepSide;
     groundStepSide *= -1;
     const x = cat.x + side * 17;
-    groundMarks.push({ x, age: 0, life: selectedTheme === 'winter' ? 4 : 2.6, side, theme: selectedTheme });
+    groundMarks.push({ x, age: 0, life: baseSeason(selectedTheme) === 'winter' ? 4 : 2.6, side, theme: selectedTheme });
     if (groundMarks.length > 40)
         groundMarks.shift();
-    const kind = selectedTheme === 'winter' ? 'snow' : selectedTheme === 'spring' ? 'droplet' : selectedTheme === 'summer' ? 'pollen' : 'leaf';
-    const color = selectedTheme === 'winter' ? '#eaf7ff' : selectedTheme === 'spring' ? '#a9e6bb' : selectedTheme === 'summer' ? '#ffe39a' : '#eaa151';
+    const kind = baseSeason(selectedTheme) === 'winter' ? 'snow' : baseSeason(selectedTheme) === 'spring' ? 'droplet' : baseSeason(selectedTheme) === 'summer' ? 'pollen' : 'leaf';
+    const color = baseSeason(selectedTheme) === 'winter' ? '#eaf7ff' : baseSeason(selectedTheme) === 'spring' ? '#a9e6bb' : baseSeason(selectedTheme) === 'summer' ? '#ffe39a' : '#eaa151';
     for (let i = 0; i < 3; i++)
         sparks.push({
             x, y: GROUND_Y + 3, vx: rand(-36, 36), vy: rand(15, 58),
@@ -5806,7 +6015,7 @@ function togglePause() {
 }
 function currentMusicContext() {
     return {
-        theme: selectedTheme,
+        theme: baseSeason(selectedTheme),
         altitude: cameraY,
         verticalVelocity: cat.vy,
         state,
@@ -5890,6 +6099,20 @@ function update(dt) {
             cat.x = width - halfW;
         if (cat.y === GROUND_Y)
             updateGroundTravel(Math.abs(cat.x - cat.prevX));
+        return;
+    }
+    if (LOCAL_TEST_BUILD && devMode && devFlight) {
+        runDebugged = true;
+        state = 'playing';
+        const up = keys.has('KeyW') || keys.has('ArrowUp');
+        const down = keys.has('KeyS') || keys.has('ArrowDown');
+        cat.vy = (Number(up) - Number(down)) * 1500;
+        cat.x = Math.max(CAT_EDGE_MARGIN, Math.min(width - CAT_EDGE_MARGIN, cat.x + cat.vx * dt));
+        cat.y = Math.max(GROUND_Y, cat.y + cat.vy * dt);
+        highestY = Math.max(highestY, cat.y);
+        descentPeakY = Math.max(descentPeakY, cat.y);
+        cameraY += (Math.max(0, cat.y - height * 0.43) - cameraY) * Math.min(1, dt * 9);
+        extendPath();
         return;
     }
     highestY = Math.max(highestY, cat.y);
@@ -5997,12 +6220,12 @@ function update(dt) {
 }
 function updateSnow(dt) {
     for (const s of snow) {
-        s.phase += dt * (selectedTheme === 'summer' ? 1.3 : 0.6);
+        s.phase += dt * (baseSeason(selectedTheme) === 'summer' ? 1.3 : 0.6);
         s.y += s.speed * dt;
         s.x += Math.sin(s.phase) * s.drift * dt;
-        if (selectedTheme === 'spring')
+        if (baseSeason(selectedTheme) === 'spring')
             s.x -= 20 * dt;
-        if (selectedTheme === 'autumn')
+        if (baseSeason(selectedTheme) === 'autumn')
             s.x += Math.sin(s.phase * 1.6) * 18 * dt;
         if (s.y > height + 12 || s.x < -20 || s.x > width + 20) {
             s.y = -12;
@@ -6092,7 +6315,7 @@ function draw() {
     else {
         // Failed scenery loads keep a painted local fallback, not a different
         // geometric landscape that breaks the game's visual language.
-        ctx.fillStyle = selectedTheme === 'winter' ? '#071b35' : selectedTheme === 'spring' ? '#a6c9e4' : selectedTheme === 'summer' ? '#75bce8' : '#5c3043';
+        ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#071b35' : baseSeason(selectedTheme) === 'spring' ? '#a6c9e4' : baseSeason(selectedTheme) === 'summer' ? '#75bce8' : '#5c3043';
         ctx.fillRect(0, 0, width, height);
         drawPaintedBackdrop();
         drawPaintedGround(worldToScreenY(GROUND_Y));
@@ -6178,7 +6401,7 @@ function drawLaunchPad(x, y) {
     ctx.save();
     const gx = x;
     const gy = y + 2;
-    if (selectedTheme === 'winter') {
+    if (baseSeason(selectedTheme) === 'winter') {
         const g = ctx.createRadialGradient(gx, gy + 2, 10, gx, gy + 2, 90);
         g.addColorStop(0, 'rgba(252,254,255,.98)');
         g.addColorStop(0.62, 'rgba(215,233,244,.92)');
@@ -6193,7 +6416,7 @@ function drawLaunchPad(x, y) {
         ctx.ellipse(gx + 24, gy + 13, 22, 5, 0.14, 0, TAU);
         ctx.fill();
     }
-    else if (selectedTheme === 'spring') {
+    else if (baseSeason(selectedTheme) === 'spring') {
         ctx.fillStyle = 'rgba(139,207,119,.95)';
         ctx.beginPath();
         ctx.ellipse(gx, gy + 12, 94, 23, 0, 0, TAU);
@@ -6211,7 +6434,7 @@ function drawLaunchPad(x, y) {
             ctx.fill();
         }
     }
-    else if (selectedTheme === 'summer') {
+    else if (baseSeason(selectedTheme) === 'summer') {
         ctx.fillStyle = 'rgba(145,200,86,.96)';
         ctx.beginPath();
         ctx.ellipse(gx, gy + 14, 96, 22, 0, 0, TAU);
@@ -6318,13 +6541,37 @@ function drawSnow() {
     ctx.save();
     for (const s of snow) {
         ctx.globalAlpha = s.alpha;
-        if (selectedTheme === 'winter') {
+        if (selectedTheme === 'great-egg-hunt') {
+            ctx.fillStyle = Math.floor(s.phase * 3) % 3 === 0 ? '#fff1bd' : '#ffd0dd';
+            ctx.beginPath();
+            ctx.ellipse(s.x, s.y, s.r * 1.6, s.r * 0.8, s.phase, 0, TAU);
+            ctx.fill();
+        }
+        else if (selectedTheme === 'fireworks-fair') {
+            ctx.fillStyle = s.y > height * 0.65 ? '#c9edff' : '#ffe4a0';
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r * 0.72, 0, TAU);
+            ctx.fill();
+        }
+        else if (selectedTheme === 'moonlit-masquerade' && Math.floor(s.phase * 3) % 4 === 0) {
+            ctx.fillStyle = '#ffd49d';
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r * 0.9, 0, TAU);
+            ctx.fill();
+        }
+        else if (selectedTheme === 'starlight-eve' && Math.floor(s.phase * 3) % 6 === 0) {
+            ctx.fillStyle = cameraY < 16000 ? '#ffe4ac' : '#daedff';
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r * 0.75, 0, TAU);
+            ctx.fill();
+        }
+        else if (baseSeason(selectedTheme) === 'winter') {
             ctx.fillStyle = '#effbff';
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.r, 0, TAU);
             ctx.fill();
         }
-        else if (selectedTheme === 'spring') {
+        else if (baseSeason(selectedTheme) === 'spring') {
             ctx.strokeStyle = 'rgba(205,232,255,.70)';
             ctx.lineWidth = Math.max(1, s.r * 0.8);
             ctx.beginPath();
@@ -6338,7 +6585,7 @@ function drawSnow() {
                 ctx.fill();
             }
         }
-        else if (selectedTheme === 'summer') {
+        else if (baseSeason(selectedTheme) === 'summer') {
             ctx.fillStyle = 'rgba(255,245,165,.72)';
             ctx.beginPath();
             ctx.ellipse(s.x, s.y, s.r * 1.3, s.r * 0.7, s.phase, 0, TAU);
@@ -6355,6 +6602,27 @@ function drawSnow() {
         }
     }
     ctx.restore();
+    if (selectedTheme === 'fireworks-fair' && cameraY > 7000) {
+        const age = elapsed % 5.7;
+        if (age < 1.2) {
+            const burst = Math.floor(elapsed / 5.7);
+            const x = width * (0.28 + winterSkyHash(burst * 29) * 0.44);
+            const y = height * (0.24 + winterSkyHash(burst * 47) * 0.22);
+            const radius = 18 + age * 31;
+            ctx.save();
+            ctx.globalAlpha = Math.min(0.50, age * 1.4) * (1 - age / 1.2);
+            ctx.strokeStyle = burst % 2 ? '#ffcf87' : '#c8deff';
+            ctx.lineWidth = 2;
+            for (let ray = 0; ray < 10; ray++) {
+                const angle = ray * TAU / 10;
+                ctx.beginPath();
+                ctx.moveTo(x + Math.cos(angle) * radius * 0.5, y + Math.sin(angle) * radius * 0.5);
+                ctx.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
 }
 function queueLaunch() {
     if (state === 'ready' || state === 'zenGrounded' || state === 'expeditionCheckpoint') {
@@ -6412,7 +6680,7 @@ canvas.addEventListener('pointerdown', e => {
         const y = e.clientY;
         for (const card of themeCardRects) {
             if (pointInRect(x, y, card.rect)) {
-                setTheme(card.theme);
+                chooseTheme(card.theme);
                 return;
             }
         }
@@ -6434,6 +6702,25 @@ canvas.addEventListener('pointerdown', e => {
 });
 window.addEventListener('keydown', e => {
     const inUi = e.target?.closest?.('.ui-overlay');
+    if (LOCAL_TEST_BUILD && e.ctrlKey && e.altKey && e.code === 'KeyT') {
+        e.preventDefault();
+        devMode = !devMode;
+        if (!devMode) {
+            devFlight = false;
+            devFish = 0;
+            restoreTestPurchases();
+        }
+        if (!devMode && state === 'title' && !festivalUnlocked(selectedTheme))
+            setTheme(baseSeason(selectedTheme));
+        if (state !== 'title')
+            runDebugged = true;
+        lastMenuUi = '';
+        refreshProgressUi();
+        const feedback = document.querySelector('#unlock-feedback');
+        if (feedback)
+            feedback.textContent = devMode ? 'Local test mode on. Festival locks are bypassed.' : 'Local test mode off.';
+        return;
+    }
     if (e.code === 'Escape') {
         e.preventDefault();
         if (scoreboardOpen)
@@ -6483,6 +6770,16 @@ window.addEventListener('keydown', e => {
         return;
     }
     keys.add(e.code);
+    if (LOCAL_TEST_BUILD && devMode && e.code === 'KeyF') {
+        e.preventDefault();
+        devFlight = !devFlight;
+        runDebugged = true;
+        bounceHold = 0;
+        pendingBounce = 0;
+        if (devFlight && state === 'falling')
+            state = 'playing';
+        return;
+    }
     if (e.code === 'KeyP') {
         togglePause();
         return;
@@ -6499,13 +6796,11 @@ window.addEventListener('keydown', e => {
     }
     if (state === 'title') {
         let idx = THEME_ORDER.indexOf(selectedTheme);
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-            idx = (idx + THEME_ORDER.length - 1) % THEME_ORDER.length;
-            setTheme(THEME_ORDER[idx]);
-            return;
-        }
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-            idx = (idx + 1) % THEME_ORDER.length;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'ArrowRight' || e.code === 'KeyD') {
+            const step = e.code === 'ArrowLeft' || e.code === 'KeyA' ? -1 : 1;
+            do {
+                idx = (idx + step + THEME_ORDER.length) % THEME_ORDER.length;
+            } while (!festivalUnlocked(THEME_ORDER[idx]));
             setTheme(THEME_ORDER[idx]);
             return;
         }

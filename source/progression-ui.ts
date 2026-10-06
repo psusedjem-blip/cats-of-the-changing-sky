@@ -24,11 +24,11 @@ function refreshProgressUi(): void {
   const balance = document.querySelector<HTMLElement>('#fish-balance');
   if (balance) balance.textContent = progress.fish.toLocaleString();
   const shopBalance = document.querySelector<HTMLElement>('#shop-balance');
-  if (shopBalance) shopBalance.textContent = progress.fish.toLocaleString();
+  if (shopBalance) shopBalance.textContent = `${progress.fish.toLocaleString()}${devFish ? ` + ${devFish} test` : ''}`;
   const shop = document.querySelector<HTMLElement>('#shop-items');
   if (shop && !document.querySelector<HTMLElement>('#shop-overlay')?.hidden) renderShop();
   const inventory = document.querySelector<HTMLElement>('#powerup-bar');
-  const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
+  const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${devFish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
   if (inventory && inventorySignature !== lastInventorySignature) {
     lastInventorySignature = inventorySignature;
     hideInventoryTooltip();
@@ -65,13 +65,13 @@ function refreshProgressUi(): void {
       inventory.append(cell);
     }
     const fish = document.createElement('button'); fish.type = 'button'; fish.className = 'powerup-cell fish-cell owned';
-    const fishDetail = `Press 0 or click to view your balance. ${progress.fish.toLocaleString()} fish available. Spend fish in Gear & supplies on the title screen.`;
+    const fishDetail = `Press 0 or click to view your balance. ${progress.fish.toLocaleString()} earned fish${devFish ? ` plus ${devFish} temporary test fish` : ''}. Spend fish in Gear & supplies on the title screen.`;
     fish.setAttribute('aria-label', `Fish. ${fishDetail}`);
     fish.setAttribute('aria-keyshortcuts', '0');
     fish.setAttribute('aria-describedby', 'powerup-tooltip');
     const fishKey = document.createElement('kbd'); fishKey.textContent = '0';
     const fishIcon = document.createElement('img'); fishIcon.src = 'assets/progression/fish.webp'; fishIcon.alt = '';
-    const fishCount = document.createElement('span'); fishCount.className = 'powerup-count'; fishCount.textContent = progress.fish.toLocaleString();
+    const fishCount = document.createElement('span'); fishCount.className = 'powerup-count'; fishCount.textContent = (progress.fish + devFish).toLocaleString();
     fish.append(fishKey, fishIcon, fishCount);
     fish.addEventListener('click', () => activateInventorySlot(0));
     fish.addEventListener('mouseenter', () => showInventoryTooltip(fish, 'Fish', fishDetail));
@@ -100,7 +100,7 @@ function renderShop(): void {
     detail.append(heading, desc);
     const button = document.createElement('button'); button.type = 'button';
     button.textContent = equipped ? 'Unequip' : owned ? 'Equip' : `Buy · ${item.cost} fish`;
-    button.disabled = !owned && (progress.fish < item.cost ||
+    button.disabled = !owned && (progress.fish + devFish < item.cost ||
       (!item.slot && progress.supplies[item.id as SupplyId] >= 9));
     button.addEventListener('click', () => { if (owned) equipItem(item.id); else purchaseItem(item.id); });
     card.append(icon, detail, button); list.append(card);
@@ -214,6 +214,20 @@ function initProgressionUi(): void {
   document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('export-save')?.addEventListener('click', exportGameData);
   document.getElementById('reroll-route')?.addEventListener('click', () => activateInventorySlot(9));
+  document.getElementById('dev-seed-fish')?.addEventListener('click', () => {
+    if (!LOCAL_TEST_BUILD || !devMode) return;
+    devFish += 100;
+    if (state !== 'title') runDebugged = true;
+    refreshProgressUi();
+  });
+  document.getElementById('dev-flight-button')?.addEventListener('click', () => {
+    if (!LOCAL_TEST_BUILD || !devMode) return;
+    devFlight = !devFlight;
+    runDebugged = true;
+    bounceHold = 0; pendingBounce = 0;
+    if (devFlight && state === 'falling') state = 'playing';
+    closeProgressDialogs();
+  });
   document.addEventListener('keydown', event => {
     const dialog = ['shop-overlay', 'settings-overlay']
       .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);

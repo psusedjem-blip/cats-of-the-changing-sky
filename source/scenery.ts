@@ -2,16 +2,16 @@
 
 function drawSky(): void {
   const g = ctx.createLinearGradient(0, 0, 0, height);
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     g.addColorStop(0, '#020912');
     g.addColorStop(0.46, '#09213a');
     g.addColorStop(1, '#17435a');
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     g.addColorStop(0, '#8fc8ef');
     g.addColorStop(0.40, '#bae6f4');
     g.addColorStop(0.82, '#d8f5e5');
     g.addColorStop(1, '#ecf8df');
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     g.addColorStop(0, '#3d9fe3');
     g.addColorStop(0.52, '#87d6ff');
     g.addColorStop(0.86, '#d8ef98');
@@ -26,7 +26,7 @@ function drawSky(): void {
   ctx.fillRect(0, 0, width, height);
   const vignette = ctx.createRadialGradient(width * 0.5, height * 0.35, 80, width * 0.5, height * 0.45, Math.max(width, height) * 0.72);
   vignette.addColorStop(0, 'rgba(255,255,255,0)');
-  vignette.addColorStop(1, selectedTheme === 'winter' ? 'rgba(0,10,20,.32)' : selectedTheme === 'spring' ? 'rgba(8,35,30,.14)' : selectedTheme === 'summer' ? 'rgba(28,46,12,.16)' : 'rgba(25,8,2,.18)');
+  vignette.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(0,10,20,.32)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(8,35,30,.14)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(28,46,12,.16)' : 'rgba(25,8,2,.18)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 }
@@ -34,7 +34,7 @@ function drawSky(): void {
 
 
 function drawStars(): void {
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     for (const s of stars) {
       const a = s.alpha + Math.sin(elapsed * 1.6 + s.twinkle) * 0.16;
       ctx.globalAlpha = Math.max(0.08, a);
@@ -56,7 +56,7 @@ function drawStars(): void {
     ctx.beginPath(); ctx.arc(moonX, moonY, 23, 0, TAU); ctx.fill();
     ctx.fillStyle = '#0a1c30';
     ctx.beginPath(); ctx.arc(moonX + 10, moonY - 5, 23, 0, TAU); ctx.fill();
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     ctx.globalAlpha = 1;
     ctx.fillStyle = 'rgba(255,255,255,.75)';
     for (let i = 0; i < 4; i++) {
@@ -64,7 +64,7 @@ function drawStars(): void {
       const y = height * (0.18 + (i % 2) * 0.06);
       drawCloud(x, y, 0.9 + (i % 3) * 0.15);
     }
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     const sunX = width * 0.84;
     const sunY = height * 0.16;
     const rg = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 78);
@@ -91,7 +91,7 @@ function drawStars(): void {
 
 function drawAurora(): void {
   ctx.save();
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = 0.10;
     for (let band = 0; band < 3; band++) {
@@ -106,7 +106,7 @@ function drawAurora(): void {
       ctx.strokeStyle = band === 1 ? '#7ed0dc' : '#79c2b1';
       ctx.stroke();
     }
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     ctx.globalAlpha = 0.18;
     for (let i = 0; i < 5; i++) {
       ctx.strokeStyle = i % 2 === 0 ? '#d9f7ff' : '#f7d4f1';
@@ -117,7 +117,7 @@ function drawAurora(): void {
       for (let x = 0; x <= width + 20; x += 40) ctx.lineTo(x, base + Math.sin(x * 0.01 + elapsed * 0.6 + i) * (6 + i * 1.6));
       ctx.stroke();
     }
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     ctx.globalAlpha = 0.12;
     ctx.strokeStyle = '#fff7c0';
     for (let i = 0; i < 5; i++) {
@@ -151,10 +151,10 @@ function drawFarMountains(): void {
   drawPaintedBackdrop();
 
   // far haze
-  ctx.globalAlpha = selectedTheme === 'winter' ? 0.22 : 0.18;
+  ctx.globalAlpha = baseSeason(selectedTheme) === 'winter' ? 0.22 : 0.18;
   const haze = ctx.createLinearGradient(0, base - 180, 0, base + 20);
   haze.addColorStop(0, 'rgba(255,255,255,.00)');
-  haze.addColorStop(1, selectedTheme === 'winter' ? 'rgba(214,235,248,.22)' : selectedTheme === 'spring' ? 'rgba(224,246,255,.18)' : selectedTheme === 'summer' ? 'rgba(255,247,211,.18)' : 'rgba(255,223,185,.16)');
+  haze.addColorStop(1, baseSeason(selectedTheme) === 'winter' ? 'rgba(214,235,248,.22)' : baseSeason(selectedTheme) === 'spring' ? 'rgba(224,246,255,.18)' : baseSeason(selectedTheme) === 'summer' ? 'rgba(255,247,211,.18)' : 'rgba(255,223,185,.16)');
   ctx.fillStyle = haze;
   ctx.fillRect(0, base - 180, width, 220);
 
@@ -166,7 +166,7 @@ function drawFarMountains(): void {
     ctx.lineTo(x + 80, base + 20);
   }
   ctx.lineTo(width, height); ctx.closePath();
-  ctx.fillStyle = selectedTheme === 'winter' ? '#183d56' : selectedTheme === 'spring' ? '#8eb4be' : selectedTheme === 'summer' ? '#9db783' : '#b08261';
+  ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#183d56' : baseSeason(selectedTheme) === 'spring' ? '#8eb4be' : baseSeason(selectedTheme) === 'summer' ? '#9db783' : '#b08261';
   ctx.fill();
 
   // mid range
@@ -177,18 +177,18 @@ function drawFarMountains(): void {
     ctx.lineTo(x + 65, base + 20);
   }
   ctx.lineTo(width, height); ctx.closePath();
-  ctx.fillStyle = selectedTheme === 'winter' ? '#113047' : selectedTheme === 'spring' ? '#749ca6' : selectedTheme === 'summer' ? '#78956d' : '#94694a';
+  ctx.fillStyle = baseSeason(selectedTheme) === 'winter' ? '#113047' : baseSeason(selectedTheme) === 'spring' ? '#749ca6' : baseSeason(selectedTheme) === 'summer' ? '#78956d' : '#94694a';
   ctx.fill();
 
   // seasonal landmarks for depth
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     drawStoneBridge(width * 0.18, base + 18, 1.25, '#718bad', '#547092');
     drawVillageSilhouette(width * 0.62, base + 6, 0.9, '#ffd79d', '#314965');
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     drawStoneBridge(width * 0.20, base + 16, 1.1, '#7898a6', '#6f8896');
     drawVillageSilhouette(width * 0.70, base + 8, 0.85, '#ffd6b5', '#7697a4');
     drawWaterRibbon(base + 4, 0.22, 'rgba(201,235,245,.40)', 'rgba(255,255,255,.0)');
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     drawWaterRibbon(base + 18, 0.18, 'rgba(126,190,236,.42)', 'rgba(255,255,255,0)');
     drawVillageSilhouette(width * 0.62, base + 14, 0.92, '#f7cda1', '#7f9a75');
     drawWindmill(width * 0.80, base - 18, 0.9, 0.28);
@@ -208,7 +208,7 @@ function drawPines(): void {
   const baseY = worldToScreenY(0) + 8;
   ctx.save();
   drawPaintedGround(baseY);
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     for (let i = -1; i < Math.ceil(width / 70) + 2; i++) {
       const x = i * 70 + ((i % 2) * 18);
       const h = 98 + ((i * 37) % 55 + 55) % 55;
@@ -221,7 +221,7 @@ function drawPines(): void {
     groundG.addColorStop(0.4, 'rgba(201,228,239,.14)');
     groundG.addColorStop(1, 'rgba(120,177,198,.18)');
     ctx.fillStyle = groundG;
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     for (let i = -1; i < Math.ceil(width / 95) + 2; i++) if (i % 2 === 0) drawBlossomTree(i * 95 + ((i % 2) * 24), baseY + 6, 0.72 + (i % 3) * 0.05);
     drawWisteriaPergola(width * 0.83, baseY - 4, 0.94);
     drawFlowerMeadow(width * 0.18, baseY + 10, 1.1, ['#f7c0de', '#ffffff', '#b68ef0']);
@@ -232,7 +232,7 @@ function drawPines(): void {
     groundG.addColorStop(0.55, 'rgba(138,199,125,.12)');
     groundG.addColorStop(1, 'rgba(111,168,103,.16)');
     ctx.fillStyle = groundG;
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     for (let i = -1; i < Math.ceil(width / 88) + 2; i++) if (i % 2 === 0) drawSunflowerCluster(i * 88 + ((i % 2) * 16), baseY + 2, 0.74 + (i % 3) * 0.05);
     drawStoneWall(width * 0.18, baseY + 8, 0.95);
     drawFlowerMeadow(width * 0.24, baseY + 12, 1.15, ['#ffffff', '#ffd54f', '#9ed0ff']);
@@ -465,12 +465,12 @@ function drawSnowBankDetail(baseY: number): void {
 
 function drawGroundDetail(baseY: number): void {
   ctx.save();
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     ctx.fillStyle = 'rgba(214,239,248,.72)';
     for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.ellipse(width * (0.12 + i*0.14), baseY + 10 + (i%2)*4, 28, 8, 0, 0, TAU); ctx.fill(); }
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     drawFlowerMeadow(width * 0.84, baseY + 20, 1.1, ['#f3b9de', '#ffffff', '#8dbbff']);
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     drawFlowerMeadow(width * 0.50, baseY + 20, 1.15, ['#ffffff', '#ffe06d', '#b183d0']);
   } else {
     ctx.fillStyle = 'rgba(166,104,38,.65)';

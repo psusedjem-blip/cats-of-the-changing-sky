@@ -11,9 +11,10 @@
   <canvas id="game" tabindex="0" aria-label="Cats of the Changing Sky game canvas"></canvas>
   <main id="menu-overlay" class="ui-overlay menu-overlay" aria-label="Main menu">
     <div class="ui-panel menu-panel">
-      <header><h1>Cats of the Changing Sky</h1><p>Choose a cat, a season, and a way to climb.</p></header>
+      <header><h1>Cats of the Changing Sky</h1><p>Choose a cat, a world, and a way to climb.</p></header>
       <fieldset><legend>Cat</legend><div id="character-options" class="character-options"></div></fieldset>
-      <fieldset><legend>Season</legend><div id="season-options" class="season-options"></div></fieldset>
+      <fieldset><legend>World</legend><div id="season-options" class="season-options"></div></fieldset>
+      <p id="unlock-feedback" class="unlock-feedback" role="status" aria-live="polite"></p>
       <fieldset><legend>Play mode</legend><div id="mode-options" class="mode-options"></div></fieldset>
       <p id="menu-description" class="menu-description"></p>
       <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button></div>
@@ -32,6 +33,9 @@
     </div>
   </section>
   <p id="powerup-status" class="powerup-status" role="status" aria-live="polite"></p>
+  <!-- LOCAL TEST START -->
+  <p id="dev-status" class="dev-status" hidden></p>
+  <!-- LOCAL TEST END -->
   <div id="powerup-bar" class="powerup-bar" role="group" aria-label="Number row items and fish"></div>
   <div id="powerup-tooltip" class="powerup-tooltip" role="tooltip" hidden></div>
   <button id="settings-button" class="settings-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
@@ -69,8 +73,18 @@
       <p>Save a copy of this browser's scores, settings, fish, gear, and supplies.</p>
       <button id="export-save" type="button">Export game data</button>
       <button id="reroll-route" type="button">Use Route Reroll at camp (9)</button>
+      <!-- LOCAL TEST START -->
+      <div id="dev-controls" class="dev-controls" hidden>
+        <h3>Local test controls</h3>
+        <p>Ctrl+Alt+T turns test mode on or off. While on, festival locks are bypassed and runs do not enter the score board or earn permanent fish.</p>
+        <p>Press F during a run for flight, then hold W/S or Up/Down to climb or descend. Test fish and purchases made with them revert when test mode ends or the game reopens.</p>
+        <button id="dev-flight-button" type="button">Toggle flight (F)</button>
+        <button id="dev-seed-fish" type="button">Add 100 temporary test fish</button>
+      </div>
+      <!-- LOCAL TEST END -->
     </div>
   </section>
-  <script src="main.js?v=3.35.4"></script>
+  <script src="test-build.js" data-local-test></script>
+  <script src="main.js?v=3.36.0"></script>
 </body>
 </html>

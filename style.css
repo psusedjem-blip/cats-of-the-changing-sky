@@ -38,6 +38,13 @@ canvas {
 .ui-panel button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .ui-panel button[aria-pressed="true"] { border: 2px solid var(--accent, #9fe8da); background: rgba(255,255,255,.18); color: var(--accent, #9fe8da); }
 .season-options button { min-height: 69px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.season-options button.locked { border-style: dashed; opacity: .83; }
+.unlock-feedback { min-height: 1.2em; margin-top: 5px !important; color: #ffe0a5; text-align: center; font-size: 12px; }
+.dev-status { position: fixed; z-index: 3; left: 12px; bottom: 65px; margin: 0; padding: 5px 9px; color: #fff3bf; background: rgba(36,21,4,.85); border: 1px solid #e9bd5e; border-radius: 8px; font: 700 11px system-ui, sans-serif; }
+.dev-status[hidden], .dev-controls[hidden] { display: none; }
+.dev-controls { margin-top: 18px; padding: 10px; border: 1px solid #e9bd5e; border-radius: 12px; background: rgba(74,47,13,.27); }
+.dev-controls p { margin: 6px 0; font-size: 12px; color: #ffeac6; }
+.dev-controls button { margin: 6px 6px 0 0; }
 .character-options button { min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
 .character-options img { width: min(100%, 112px); height: 58px; object-fit: contain; }
 .character-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
@@ -123,6 +130,7 @@ canvas {
   .character-options button { min-height: 67px; padding: 4px 2px; font-size: 10px; }
   .character-options img { height: 38px; }
   .character-options small, .season-options small { display: none; }
+  .season-options button.locked small { display: block; font-size: 9px; }
   .season-options button { min-height: 45px; padding: 4px 2px; font-size: 11px; }
   .mode-options button { padding: 8px 3px; font-size: 12px; }
   .mode-options small { font-size: 10px; }

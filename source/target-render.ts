@@ -50,7 +50,7 @@ function drawBell(x: number, y: number, bell: Bell, t: number): void {
   ctx.translate(x, y);
   ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
 
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     const sway = Math.sin(t * 1.95 + bell.phase) * 0.055;
     ctx.rotate(sway + Math.sin(t * 6.2 + bell.phase) * 0.018);
     const h = bell.h, w = bell.w;
@@ -68,7 +68,7 @@ function drawBell(x: number, y: number, bell: Bell, t: number): void {
     ctx.strokeStyle = '#ffe7a0'; ctx.lineWidth = Math.max(2, w * 0.032); ctx.beginPath(); ctx.ellipse(0, h * 0.32, w * 0.44, h * 0.10, 0, 0, TAU); ctx.stroke();
     ctx.strokeStyle = '#6e4310'; ctx.lineWidth = Math.max(1.5, w * 0.025); ctx.beginPath(); ctx.moveTo(0, h * 0.12); ctx.lineTo(0, h * 0.42); ctx.stroke();
     ctx.fillStyle = bell.kind === 'crystal' ? '#d8fbff' : bell.kind === 'silver' ? '#edf4fb' : '#d69f36'; ctx.beginPath(); ctx.arc(0, h * 0.45, Math.max(3, w * 0.065), 0, TAU); ctx.fill();
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     const size = bell.w * 0.48;
     ctx.lineWidth = 2.1;
     if (bell.kind === 'bronze') {
@@ -96,7 +96,7 @@ function drawBell(x: number, y: number, bell: Bell, t: number): void {
       ctx.fillStyle = '#81b756'; ctx.beginPath(); ctx.ellipse(size*0.30, -size*0.98, size*0.12, size*0.08, 0.6, 0, TAU); ctx.fill();
       ctx.fillStyle = '#fff8d6'; ctx.beginPath(); ctx.arc(0, size*0.18, size*0.10, 0, TAU); ctx.fill();
     }
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     const size = bell.w * 0.50;
     ctx.lineWidth = 2.1;
     if (bell.kind === 'bronze') {
@@ -150,7 +150,7 @@ function drawMoth(x: number, y: number, phase: number, vx: number, kind: BellKin
   ctx.translate(x, y);
   ctx.scale(vx < 0 ? -1 : 1, 1);
   ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
-  if (selectedTheme === 'winter') {
+  if (baseSeason(selectedTheme) === 'winter') {
     const flap = Math.sin(phase) * 0.72;
     const pulse = 0.78 + Math.sin(phase * 0.5) * 0.16;
     const glow = ctx.createRadialGradient(0, 0, 3, 0, 0, 54);
@@ -160,7 +160,7 @@ function drawMoth(x: number, y: number, phase: number, vx: number, kind: BellKin
     ctx.save(); ctx.rotate(-0.10 - flap * 0.48); ctx.fillStyle = 'rgba(217,255,249,.95)'; ctx.beginPath(); ctx.moveTo(-3, -2); ctx.quadraticCurveTo(-14, -25, -35, -28); ctx.quadraticCurveTo(-25, -7, -8, 4); ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.save(); ctx.rotate(0.08 + flap * 0.36); ctx.fillStyle = 'rgba(180,250,238,.88)'; ctx.beginPath(); ctx.moveTo(-1, 2); ctx.quadraticCurveTo(-8, 22, -27, 27); ctx.quadraticCurveTo(-21, 7, -5, -4); ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.fillStyle = '#dffff8'; ctx.beginPath(); ctx.ellipse(5, 2, 18, 10, -0.08, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(19, -3, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#7ee5d2'; ctx.beginPath(); ctx.moveTo(26, -3); ctx.lineTo(35, 0); ctx.lineTo(26, 3); ctx.closePath(); ctx.fill();
-  } else if (selectedTheme === 'spring') {
+  } else if (baseSeason(selectedTheme) === 'spring') {
     const wing = Math.sin(phase * 1.7) * 0.6;
     const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 42);
     glow.addColorStop(0, 'rgba(179,232,255,.32)'); glow.addColorStop(1, 'rgba(179,232,255,0)'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,42,0,TAU); ctx.fill();
@@ -173,7 +173,7 @@ function drawMoth(x: number, y: number, phase: number, vx: number, kind: BellKin
     ctx.beginPath(); ctx.ellipse(10, 8, 12, 6 - wing * 2, 0.25, 0, TAU); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#3f8aa0'; ctx.fillRect(-1.5, -12, 3, 26); ctx.beginPath(); ctx.arc(0, -14, 4, 0, TAU); ctx.fill();
     ctx.strokeStyle='#7fcaee'; ctx.beginPath(); ctx.moveTo(0,-14); ctx.quadraticCurveTo(-8,-24,-12,-24); ctx.moveTo(0,-14); ctx.quadraticCurveTo(8,-24,12,-24); ctx.stroke();
-  } else if (selectedTheme === 'summer') {
+  } else if (baseSeason(selectedTheme) === 'summer') {
     const flap = Math.sin(phase * 1.9) * 0.26;
     ctx.rotate(flap);
     ctx.fillStyle = '#29365a';

@@ -25,10 +25,30 @@ const CHAPTER_BANDS: Record<ThemeName, [ChapterBand, ChapterBand, ChapterBand]> 
     { name: 'Migration Sky', near: '#573c58', light: '#ffcfaa' },
     { name: 'Lantern Dusk', near: '#40334f', light: '#ffd895' },
   ],
+  'starlight-eve': [
+    { name: 'Harbor Lights', near: '#243e63', light: '#d8efff' },
+    { name: 'Aurora Lighthouse', near: '#293b67', light: '#a7eaff' },
+    { name: 'Astral Harbor', near: '#202b53', light: '#ffe7ba' },
+  ],
+  'great-egg-hunt': [
+    { name: 'Hedge Maze', near: '#538c71', light: '#ffe0dc' },
+    { name: 'Glasshouse Heights', near: '#699b92', light: '#f7f0d5' },
+    { name: 'Cloud Conservatory', near: '#789fae', light: '#fff0ef' },
+  ],
+  'fireworks-fair': [
+    { name: 'Festival Pier', near: '#3a7094', light: '#ffe3a4' },
+    { name: 'Lighthouse Cliffs', near: '#315f94', light: '#fff1c0' },
+    { name: 'Firework Sky', near: '#273b78', light: '#ffe7b5' },
+  ],
+  'moonlit-masquerade': [
+    { name: 'Oak Root Path', near: '#594761', light: '#ffcc9e' },
+    { name: 'Lantern Treehouses', near: '#4d3e61', light: '#f4bdc6' },
+    { name: 'Clocktower Moon', near: '#32284f', light: '#f4daae' },
+  ],
 };
 
 type UpperRealmArt = { mid: HTMLImageElement; high: HTMLImageElement; bridge: HTMLImageElement; state: 'idle' | 'loading' | 'ready' | 'failed' };
-const UPPER_REALM_PATHS: Record<ThemeName, { mid: string; high: string }> = {
+const UPPER_REALM_PATHS: Record<SeasonName, { mid: string; high: string }> = {
   winter: { mid: 'assets/themes/winter/winter-mid-terrain-v2.png', high: 'assets/themes/winter/winter-high-terrain.webp' },
   spring: { mid: 'assets/themes/spring/spring-mid-terrain.webp', high: 'assets/themes/spring/spring-high-terrain.webp' },
   summer: { mid: 'assets/themes/summer/summer-mid-terrain.webp', high: 'assets/themes/summer/summer-high-terrain.webp' },
@@ -39,6 +59,10 @@ const UPPER_FOOTHOLD_PATHS: Record<ThemeName, string> = {
   spring: 'assets/themes/spring/upper-foothold.webp',
   summer: 'assets/themes/summer/upper-foothold.webp',
   autumn: 'assets/themes/autumn/upper-foothold.webp',
+  'starlight-eve': 'assets/themes/starlight-eve/foothold.png',
+  'great-egg-hunt': 'assets/themes/great-egg-hunt/foothold.png',
+  'fireworks-fair': 'assets/themes/fireworks-fair/foothold.png',
+  'moonlit-masquerade': 'assets/themes/moonlit-masquerade/foothold.png',
 };
 const upperRealmArt = {} as Record<ThemeName, UpperRealmArt>;
 const upperFootholdArt = {} as Record<ThemeName, HTMLImageElement>;
@@ -58,9 +82,11 @@ type SeasonContinuousArt = {
 };
 const SEASON_SKY_COLOR: Record<ThemeName, string> = {
   winter: '#081e40', spring: '#3446a6', summer: '#76b7f5', autumn: '#231838',
+  'starlight-eve': '#111b40', 'great-egg-hunt': '#8495c9',
+  'fireworks-fair': '#142652', 'moonlit-masquerade': '#20152d',
 };
 const seasonContinuousArt = {} as Record<Exclude<ThemeName, 'winter'>, SeasonContinuousArt>;
-for (const theme of ['spring', 'summer', 'autumn'] as const) {
+for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'] as Exclude<ThemeName, 'winter'>[]) {
   const world = new Image();
   const upper = new Image();
   const starfield = new Image();
@@ -72,15 +98,16 @@ for (const theme of ['spring', 'summer', 'autumn'] as const) {
 
 const continuousState: Record<ThemeName, 'idle' | 'loading' | 'ready' | 'failed'> = {
   winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle',
+  'starlight-eve': 'idle', 'great-egg-hunt': 'idle', 'fireworks-fair': 'idle', 'moonlit-masquerade': 'idle',
 };
 function loadContinuousSeason(theme: ThemeName): void {
   if (continuousState[theme] !== 'idle') return;
   continuousState[theme] = 'loading';
   const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
     : seasonContinuousArt[theme];
-  art.world.src = `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
-  art.upper.src = `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
-  art.starfield.src = `assets/themes/${theme}/${theme}-starfield-v1.png`;
+  art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.png` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+  art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.png` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
+  art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.png` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
   void Promise.all([art.world, art.upper, art.starfield].map(image => image.decode())).then(() => {
     continuousState[theme] = 'ready';
   }).catch(error => {
@@ -327,9 +354,10 @@ function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: 
   const visibleWorldSpan = height / pixelsPerWorld;
   const skyY = (worldY: number): number => height + (backdropCameraY - worldY) * pixelsPerWorld;
   const arrival = (worldY: number): number => chapterEase((worldY - 33000) / 4000);
-  const offset = theme === 'spring' ? 11 : theme === 'summer' ? 47 : 83;
-  const colors = theme === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
-    : theme === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
+  const season = baseSeason(theme);
+  const offset = season === 'spring' ? 11 : season === 'summer' ? 47 : season === 'winter' ? 5 : 83;
+  const colors = season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
+    : season === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
     : ['255,181,107', '235,161,180', '255,217,150'];
   const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 3200));
   const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 3200);
@@ -364,7 +392,7 @@ function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: 
     ctx.translate(x, y);
     ctx.rotate(winterSkyHash(index * 41 + offset) * Math.PI);
     ctx.fillStyle = `rgba(${color},0.82)`;
-    if (theme === 'summer') {
+    if (season === 'summer' || season === 'winter') {
       ctx.beginPath(); ctx.arc(0, 0, Math.max(2, radius * 0.18), 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = `rgba(${color},0.65)`;
       for (let ray = 0; ray < 6; ray++) {
@@ -376,9 +404,9 @@ function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: 
       }
     } else {
       ctx.beginPath();
-      ctx.ellipse(0, 0, radius * (theme === 'spring' ? 0.38 : 0.48), radius, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, radius * (season === 'spring' ? 0.38 : 0.48), radius, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (theme === 'autumn') {
+      if (season === 'autumn') {
         ctx.strokeStyle = `rgba(${color},0.7)`;
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, radius * 1.4); ctx.stroke();
       }
@@ -408,7 +436,15 @@ function drawSeasonContinuousWorld(theme: Exclude<ThemeName, 'winter'>): void {
   drawPanel(art.preparedUpper, 12000);
   // The final painting's feathered top reveals these later motifs gradually.
   drawSeasonHighSky(theme, pixelsPerWorld);
-  drawPanel(art.preparedStarfield, 23000);
+  if (isFestival(theme)) {
+    // One taller authored starfield carries each festival through Expedition's
+    // summit. It fades into the later motifs without repeating the painting.
+    const starHeight = imageHeight * 1.55;
+    const bottom = height + (backdropCameraY - 23000) * pixelsPerWorld;
+    if (bottom > 0 && bottom - starHeight < height) {
+      ctx.drawImage(art.preparedStarfield, x, bottom - starHeight, imageWidth, starHeight);
+    }
+  } else drawPanel(art.preparedStarfield, 23000);
 }
 
 function prepareUpperTerrainImage(image: HTMLImageElement, fadeStart: number): HTMLCanvasElement {
@@ -444,7 +480,7 @@ function prepareUpperTerrain(theme: ThemeName): void {
   };
 }
 
-for (const theme of ['winter', 'spring', 'summer', 'autumn'] as ThemeName[]) {
+for (const theme of ['winter', 'spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'] as ThemeName[]) {
   const mid = new Image();
   const high = new Image();
   const bridge = new Image();
@@ -473,11 +509,11 @@ function loadUpperRealm(theme: ThemeName): void {
   mid.onload = check;
   high.onload = check;
   mid.onerror = high.onerror = () => { art.state = 'failed'; console.error(`${theme} upper realm art failed to load.`); };
-  mid.src = UPPER_REALM_PATHS[theme].mid;
-  high.src = UPPER_REALM_PATHS[theme].high;
+  mid.src = UPPER_REALM_PATHS[baseSeason(theme)].mid;
+  high.src = UPPER_REALM_PATHS[baseSeason(theme)].high;
   bridge.onload = check;
   bridge.onerror = () => { art.state = 'failed'; console.error(`${theme} bridge art failed to load.`); };
-  bridge.src = `assets/themes/${theme}/${theme}-bridge.webp`;
+  bridge.src = `assets/themes/${baseSeason(theme)}/${baseSeason(theme)}-bridge.webp`;
   const foothold = new Image();
   foothold.src = UPPER_FOOTHOLD_PATHS[theme];
   upperFootholdArt[theme] = foothold;
@@ -538,6 +574,7 @@ function drawUpperFoothold(x: number, y: number): void {
   const w = Math.min(260, Math.max(185, width * 0.19));
   const h = w * image.naturalHeight / image.naturalWidth;
   // Align the flat center of each hand-painted ledge with Zima's feet.
-  const top: Record<ThemeName, number> = { winter: 0.404, spring: 0.379, summer: 0.413, autumn: 0.350 };
+  const top: Record<ThemeName, number> = { winter: 0.404, spring: 0.379, summer: 0.413, autumn: 0.350,
+    'starlight-eve': 0.42, 'great-egg-hunt': 0.40, 'fireworks-fair': 0.42, 'moonlit-masquerade': 0.40 };
   ctx.drawImage(image, x - w * 0.54, y - h * top[selectedTheme], w, h);
 }
