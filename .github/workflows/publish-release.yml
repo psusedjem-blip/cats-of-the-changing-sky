@@ -1,0 +1,69 @@
+name: Publish branch release
+
+on:
+  push:
+    branches: [main, beta]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package:store
+      - run: npm run package:sideload
+      - name: Confirm generated game script is committed
+        run: git diff --exit-code -- main.js
+      - name: Publish the built ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./manifest.json').version")"
+          short_sha="${GITHUB_SHA:0:7}"
+          tag="${GITHUB_REF_NAME}-v${version}-${short_sha}"
+          manual_zip="../cats-of-the-changing-sky-v${version}.zip"
+          store_zip="../cats-of-the-changing-sky-v${version}-store.zip"
+          notes="$RUNNER_TEMP/release-notes.md"
+
+          if [[ "$GITHUB_REF_NAME" == main ]]; then
+            title="Cats of the Changing Sky v${version} (stable, ${short_sha})"
+            printf 'Stable build from `main` at commit `%s`.\n\n' "$GITHUB_SHA" > "$notes"
+          else
+            title="Cats of the Changing Sky v${version} (beta, ${short_sha})"
+            printf 'Beta build from `beta` at commit `%s`.\n\n' "$GITHUB_SHA" > "$notes"
+          fi
+          printf 'Download `%s` for a manual unpacked install. The `-store.zip` package has `manifest.json` at its root and excludes local test controls.\n' "${manual_zip##*/}" >> "$notes"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$manual_zip" "$store_zip" --clobber --repo "$GITHUB_REPOSITORY"
+            if [[ "$GITHUB_REF_NAME" == main ]]; then
+              gh release edit "$tag" --title "$title" --notes-file "$notes" --latest --repo "$GITHUB_REPOSITORY"
+            else
+              gh release edit "$tag" --title "$title" --notes-file "$notes" --prerelease --repo "$GITHUB_REPOSITORY"
+            fi
+          elif [[ "$GITHUB_REF_NAME" == main ]]; then
+            gh release create "$tag" "$manual_zip" "$store_zip" \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$title" --notes-file "$notes" --latest
+          else
+            gh release create "$tag" "$manual_zip" "$store_zip" \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$title" --notes-file "$notes" --prerelease --latest=false
+          fi

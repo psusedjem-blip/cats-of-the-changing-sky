@@ -79,7 +79,7 @@ Scores from runs using functional gear or supplies are labeled **Equipped**. Ear
 
 ## Install from GitHub
 
-For the current stable release, get the game ZIP from the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). Download the asset named `cats-of-the-changing-sky-v3.34.26.zip`; GitHub's automatic **Source code** ZIP is different. Extract the download and keep its `zima-skybells-extension` folder in a permanent location.
+For the current stable release, get the game ZIP from the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). For beta, choose the newest prerelease with a `beta-v` tag on the [releases page](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases). Download the asset named `cats-of-the-changing-sky-v<version>.zip`; GitHub's automatic **Source code** ZIP is different. Extract the download and keep its `zima-skybells-extension` folder in a permanent location.
 
 - **Chrome:** Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `zima-skybells-extension` folder.
 - **Edge:** Open `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the same folder.
@@ -92,7 +92,7 @@ The character and scenery art was **generated with AI**, then selected, revised,
 
 ## Beta source and build
 
-The `main` branch is the stable game. Work on this `beta` branch remains separate until it is ready for a stable release. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
+The `main` branch is the stable game. New work goes to `beta` until it is ready for `main`. Pushing either branch runs the build and package checks and publishes two ZIPs for that commit; `main` releases are marked Latest and `beta` releases are prereleases. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
 
 Local unpacked and sideload test builds include `test-build.js`. Press `Ctrl+Alt+T` to toggle test mode. While active, festival locks are bypassed, `F` toggles flight, and `W`/`S` or Up/Down fly vertically. Settings offers 100 temporary test fish for checking the shop. Test fish expire when the page closes, and test runs do not earn permanent fish or enter the score board. Store packages exclude the test script and controls and hard-disable test mode in the bundled JavaScript.
 

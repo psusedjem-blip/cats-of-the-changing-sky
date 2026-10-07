@@ -1,8 +1,6 @@
-name: Verify beta build
+name: Verify proposed build
 
 on:
-  push:
-    branches: [beta]
   pull_request:
     branches: [beta, main]
 
