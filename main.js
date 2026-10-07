@@ -96,12 +96,31 @@ function loadContinuousSeason(theme) {
     continuousState[theme] = 'loading';
     const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
         : seasonContinuousArt[theme];
+    const { world, upper, starfield } = art;
     art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.png` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
     art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.png` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
     art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.png` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
-    void Promise.all([art.world, art.upper, art.starfield].map(image => image.decode())).then(() => {
+    void Promise.all([world, upper, starfield].map(image => image.decode())).then(() => {
+        if (art.world !== world || art.upper !== upper || art.starfield !== starfield)
+            return;
+        if (isFestival(theme) && theme !== selectedTheme) {
+            art.world = new Image();
+            art.upper = new Image();
+            art.starfield = new Image();
+            continuousState[theme] = 'idle';
+            return;
+        }
         continuousState[theme] = 'ready';
     }).catch(error => {
+        if (art.world !== world || art.upper !== upper || art.starfield !== starfield)
+            return;
+        if (isFestival(theme) && theme !== selectedTheme) {
+            art.world = new Image();
+            art.upper = new Image();
+            art.starfield = new Image();
+            continuousState[theme] = 'idle';
+            return;
+        }
         continuousState[theme] = 'failed';
         console.warn(`${theme} continuous world unavailable; using earlier scenery.`, error);
     });
@@ -491,27 +510,54 @@ function loadUpperRealm(theme) {
     const { mid, high, bridge } = art;
     let decoding = false;
     const check = () => {
+        if (upperRealmArt[theme] !== art)
+            return;
         if (decoding || !mid.complete || !high.complete || !bridge.complete ||
             !mid.naturalWidth || !high.naturalWidth || !bridge.naturalWidth)
             return;
         decoding = true;
         void Promise.all([mid.decode(), high.decode(), bridge.decode()]).then(() => {
+            if (upperRealmArt[theme] !== art)
+                return;
             // Decoding finishes before any of these images are copied to a canvas.
+            if (isFestival(theme) && theme !== selectedTheme) {
+                upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+                delete upperFootholdArt[theme];
+                return;
+            }
             art.state = 'ready';
             if (theme === selectedTheme)
                 prepareUpperTerrain(theme);
         }).catch(error => {
+            if (upperRealmArt[theme] !== art)
+                return;
+            if (isFestival(theme) && theme !== selectedTheme) {
+                upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+                delete upperFootholdArt[theme];
+                return;
+            }
             art.state = 'failed';
             console.error(`${theme} upper realm art could not be decoded.`, error);
         });
     };
     mid.onload = check;
     high.onload = check;
-    mid.onerror = high.onerror = () => { art.state = 'failed'; console.error(`${theme} upper realm art failed to load.`); };
+    const fail = () => {
+        if (upperRealmArt[theme] !== art)
+            return;
+        if (isFestival(theme) && theme !== selectedTheme) {
+            upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+            delete upperFootholdArt[theme];
+            return;
+        }
+        art.state = 'failed';
+        console.error(`${theme} upper realm art failed to load.`);
+    };
+    mid.onerror = high.onerror = fail;
     mid.src = UPPER_REALM_PATHS[baseSeason(theme)].mid;
     high.src = UPPER_REALM_PATHS[baseSeason(theme)].high;
     bridge.onload = check;
-    bridge.onerror = () => { art.state = 'failed'; console.error(`${theme} bridge art failed to load.`); };
+    bridge.onerror = fail;
     bridge.src = `assets/themes/${baseSeason(theme)}/${baseSeason(theme)}-bridge.webp`;
     const foothold = new Image();
     foothold.src = UPPER_FOOTHOLD_PATHS[theme];
@@ -1017,13 +1063,15 @@ function drawProgressEffects() {
 function rerollCampRoute() {
     if (state !== 'expeditionCheckpoint' || progress.supplies.routeReroll < 1)
         return false;
+    const firstOrdinal = bells[0]?.id ?? Math.max(1, bellCount + 1);
     progress.supplies.routeReroll--;
     runEquipped = true;
     saveProgress();
     bells = [];
     moths = [];
     runCrates = [];
-    generateInitialPath((bellCount || 1) + 1, expeditionCheckpointY + 205);
+    nextBonusBell = firstOrdinal + 17;
+    generateInitialPath(firstOrdinal, expeditionCheckpointY + 205);
     message = 'NEW ROUTE';
     messageTimer = 1.5;
     return true;
@@ -1136,6 +1184,7 @@ function refreshProgressUi() {
     const inventory = document.querySelector('#powerup-bar');
     const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${devFish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
     if (inventory && inventorySignature !== lastInventorySignature) {
+        const focusedSlot = Array.from(inventory.children).indexOf(document.activeElement);
         lastInventorySignature = inventorySignature;
         hideInventoryTooltip();
         inventory.replaceChildren();
@@ -1198,6 +1247,8 @@ function refreshProgressUi() {
         fish.addEventListener('focus', () => showInventoryTooltip(fish, 'Fish', fishDetail));
         fish.addEventListener('blur', hideInventoryTooltip);
         inventory.append(fish);
+        if (focusedSlot >= 0)
+            inventory.querySelectorAll('button')[focusedSlot]?.focus();
     }
     const reroll = document.querySelector('#reroll-route');
     if (reroll)
@@ -1207,6 +1258,7 @@ function renderShop() {
     const list = document.querySelector('#shop-items');
     if (!list)
         return;
+    const focusedItem = Array.from(list.querySelectorAll('button')).indexOf(document.activeElement);
     list.replaceChildren();
     for (const item of PROGRESSION_ITEMS) {
         const owned = item.slot ? progress.owned.includes(item.id) : false;
@@ -1236,6 +1288,10 @@ function renderShop() {
         card.append(icon, detail, button);
         list.append(card);
     }
+    if (focusedItem >= 0) {
+        const replacement = list.querySelectorAll('button')[focusedItem];
+        (replacement && !replacement.disabled ? replacement : document.querySelector('#close-shop'))?.focus();
+    }
 }
 function closeProgressDialogs() {
     for (const id of ['shop-overlay', 'settings-overlay']) {
@@ -1249,6 +1305,8 @@ function closeProgressDialogs() {
     canvas.focus();
 }
 function openProgressDialog(id) {
+    if (scoreboardOpen)
+        closeScoreboard();
     const alreadyOpen = ['shop-overlay', 'settings-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
     const wasPaused = alreadyOpen ? pauseBeforeDialog : paused;
     closeProgressDialogs();
@@ -1467,8 +1525,19 @@ function resumeAudioContext() {
         void audioCtx.resume();
 }
 function resumeMusicClock() {
-    if (audioCtx)
-        musicNext = audioCtx.currentTime + 0.08;
+    if (!audioCtx || !musicGain || !masterGain)
+        return;
+    const now = audioCtx.currentTime;
+    const outgoing = musicGain;
+    const incoming = audioCtx.createGain();
+    incoming.gain.setValueAtTime(0.0001, now);
+    incoming.gain.setTargetAtTime(0.87 * musicLevel, now, 0.035);
+    incoming.connect(masterGain);
+    musicGain = incoming;
+    outgoing.gain.cancelScheduledValues(now);
+    outgoing.gain.setTargetAtTime(0.0001, now, 0.025);
+    window.setTimeout(() => outgoing.disconnect(), 3000);
+    musicNext = now + 0.08;
 }
 function resetMusicForTheme() {
     if (!audioCtx)
@@ -1487,8 +1556,8 @@ function toggleMute(isPaused) {
     muted = !muted;
     localStorage.setItem('zima-skybells-muted', muted ? '1' : '0');
     syncMasterAudio(isPaused);
-    if (!muted && audioCtx)
-        musicNext = audioCtx.currentTime + 0.08;
+    if (!muted)
+        resumeMusicClock();
 }
 function ensureAudio() {
     if (audioStarted)
@@ -1817,6 +1886,103 @@ function scheduleAutumnBar(bar, when) {
         schedulePixelPluck(p.chord[1] + 12, when + eighth * 2.5, 0.19, 0.004);
     return barLen;
 }
+function scheduleStarlightEveBar(bar, when) {
+    const beat = 0.29;
+    const length = beat * 7;
+    const progression = [
+        { root: 49, chord: [49, 52, 56, 59, 63], melody: [75, 80, 78] },
+        { root: 45, chord: [45, 49, 52, 56, 59], melody: [73, 76, 80] },
+        { root: 52, chord: [52, 56, 59, 63, 66], melody: [78, 83, 80] },
+        { root: 47, chord: [47, 51, 54, 58, 61], melody: [75, 78, 73] },
+    ];
+    const p = progression[(bar + Math.floor(bar / 8)) % progression.length];
+    const arpeggio = [0, 2, 4, 1, 3, 4, 2];
+    for (let i = 0; i < arpeggio.length; i++) {
+        if (i === 3 && bar % 8 < 2)
+            continue;
+        schedulePiano(p.chord[arpeggio[i]] + 12, when + i * beat, beat * 1.35, i === 0 ? 0.017 : 0.011);
+    }
+    scheduleWarmPad(p.chord[2], when, length * 0.96, 0.0048 + musicLift * 0.002);
+    scheduleCello(p.root, when, length * 0.92, musicDescending ? 0.007 : 0.010);
+    if (bar % 2 === 0)
+        scheduleChime(p.melody[0], when + beat * 2.5, 0.55, 0.009);
+    if (bar % 4 === 3)
+        scheduleChime(p.melody[1], when + beat * 5.5, 0.43, 0.007);
+    if (musicLift > 0.35 && bar % 4 === 1)
+        schedulePixelPluck(p.melody[2] + 12, when + beat * 4.2, 0.18, 0.0035);
+    return length;
+}
+function scheduleGreatEggHuntBar(bar, when) {
+    const beat = 0.30;
+    const length = beat * 5;
+    const progression = [
+        { root: 54, chord: [54, 58, 61, 66], melody: [78, 85, 82] },
+        { root: 61, chord: [61, 65, 68, 73], melody: [80, 82, 77] },
+        { root: 56, chord: [56, 60, 63, 68], melody: [75, 82, 80] },
+        { root: 59, chord: [59, 63, 66, 71], melody: [78, 75, 83] },
+    ];
+    const p = progression[(bar + Math.floor(bar / 8) * 3) % progression.length];
+    scheduleCello(p.root - 12, when, length * 0.88, 0.007);
+    scheduleWarmPad(p.chord[1], when, length * 0.90, 0.0036 + musicLift * 0.001);
+    schedulePixelPluck(p.chord[0] + 24, when, 0.20, 0.0045);
+    scheduleMallet(p.melody[0], when + beat * 0.72, 0.38, 0.010);
+    schedulePiano(p.chord[2] + 12, when + beat * 2, beat * 1.2, 0.014);
+    if (bar % 4 !== 3)
+        scheduleMallet(p.melody[1], when + beat * 3.28, 0.34, 0.008);
+    if (bar % 2 === 1)
+        schedulePixelPluck(p.melody[2] + 12, when + beat * 4.12, 0.17, 0.004);
+    if (musicLift > 0.45 && bar % 4 === 2)
+        scheduleChime(p.melody[1] + 12, when + beat * 1.3, 0.28, 0.004);
+    return length;
+}
+function scheduleFireworksFairBar(bar, when) {
+    const beat = 0.27;
+    const length = beat * 8;
+    const progression = [
+        { root: 55, chord: [55, 59, 62, 67], melody: [79, 86, 83] },
+        { root: 50, chord: [50, 54, 57, 62], melody: [78, 81, 86] },
+        { root: 60, chord: [60, 64, 67, 72], melody: [84, 88, 83] },
+        { root: 57, chord: [57, 61, 64, 69], melody: [81, 85, 79] },
+    ];
+    const p = progression[(bar + Math.floor(bar / 8)) % progression.length];
+    scheduleCello(p.root - 12, when, length * 0.90, musicDescending ? 0.007 : 0.011);
+    scheduleWarmPad(p.chord[2], when, length * 0.93, 0.004 + musicLift * 0.0018);
+    schedulePiano(p.chord[0] + 12, when, beat * 2.1, 0.020);
+    schedulePiano(p.chord[2] + 12, when + beat * 2.8, beat * 1.4, 0.013);
+    schedulePiano(p.chord[3] + 12, when + beat * 5.8, beat * 1.4, 0.014);
+    if (bar % 4 !== 3)
+        scheduleMallet(p.melody[0], when + beat * 1.5, 0.48, 0.011);
+    if (bar % 2 === 1)
+        scheduleChime(p.melody[1], when + beat * 4.2, 0.46, 0.010);
+    if (bar % 4 === 2)
+        scheduleMallet(p.melody[2], when + beat * 6.6, 0.32, 0.007);
+    if (!musicDescending && bar % 2 === 0)
+        scheduleBrush(when + beat * 3.9, 0.0019);
+    return length;
+}
+function scheduleMoonlitMasqueradeBar(bar, when) {
+    const beat = 0.36;
+    const length = beat * 6;
+    const progression = [
+        { root: 52, chord: [52, 55, 59, 64], melody: [79, 75, 83] },
+        { root: 47, chord: [47, 50, 54, 59], melody: [78, 74, 81] },
+        { root: 49, chord: [49, 52, 56, 61], melody: [80, 76, 83] },
+        { root: 44, chord: [44, 47, 51, 56], melody: [75, 71, 78] },
+    ];
+    const p = progression[(bar + Math.floor(bar / 8) * 2) % progression.length];
+    scheduleCello(p.root, when, length * 0.97, musicDescending ? 0.008 : 0.012);
+    scheduleWarmPad(p.chord[1], when, length * 0.94, 0.005 + musicLift * 0.001);
+    schedulePiano(p.chord[0] + 12, when, beat * 1.7, 0.017);
+    schedulePiano(p.chord[2] + 12, when + beat * 2, beat * 1.4, 0.011);
+    schedulePiano(p.chord[3] + 12, when + beat * 4, beat * 1.4, 0.011);
+    if (bar % 4 !== 3)
+        scheduleMallet(p.melody[0], when + beat * 0.95, 0.62, 0.008);
+    if (bar % 4 === 1 || bar % 4 === 2)
+        scheduleChime(p.melody[1], when + beat * 3.2, 0.48, 0.006);
+    if (bar % 8 >= 4)
+        schedulePixelPluck(p.melody[2], when + beat * 5.1, 0.21, 0.0035);
+    return length;
+}
 function updateMusic(context) {
     if (!audioCtx || audioCtx.state !== 'running' || muted)
         return;
@@ -1834,12 +2000,25 @@ function updateMusic(context) {
             len = scheduleSpringBar(musicBar, musicNext);
         else if (context.theme === 'summer')
             len = scheduleSummerBar(musicBar, musicNext);
-        else
+        else if (context.theme === 'autumn')
             len = scheduleAutumnBar(musicBar, musicNext);
+        else if (context.theme === 'starlight-eve')
+            len = scheduleStarlightEveBar(musicBar, musicNext);
+        else if (context.theme === 'great-egg-hunt')
+            len = scheduleGreatEggHuntBar(musicBar, musicNext);
+        else if (context.theme === 'fireworks-fair')
+            len = scheduleFireworksFairBar(musicBar, musicNext);
+        else
+            len = scheduleMoonlitMasqueradeBar(musicBar, musicNext);
         const chapter = context.chapter;
-        scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
+        if (!isFestival(context.theme))
+            scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
         if (chapter !== musicChapterBand) {
-            scheduleChime((context.theme === 'winter' ? 74 : context.theme === 'spring' ? 79 : context.theme === 'summer' ? 81 : 76) + chapter * 2, musicNext + len * 0.15, 0.34, 0.006);
+            const chapterNote = {
+                winter: 74, spring: 79, summer: 81, autumn: 76,
+                'starlight-eve': 87, 'great-egg-hunt': 90, 'fireworks-fair': 88, 'moonlit-masquerade': 75,
+            };
+            scheduleChime(chapterNote[context.theme] + chapter * 2, musicNext + len * 0.15, 0.34, 0.006);
             musicChapterBand = chapter;
         }
         musicNext += len;
@@ -5130,6 +5309,10 @@ function loadSceneAssets(theme) {
     const layers = Promise.all([paths.sky, paths.far, paths.mid, paths.near, paths.ground].map(preloadImage));
     const propAsset = paths.prop ? preloadImage(paths.prop).catch(error => { console.warn(`${theme} landmark art unavailable.`, error); return null; }) : Promise.resolve(null);
     void Promise.all([layers, propAsset]).then(([[sky, far, mid, near, ground], prop]) => {
+        if (isFestival(theme) && theme !== selectedTheme) {
+            sceneAssetState[theme] = 'idle';
+            return;
+        }
         sceneAssets[theme] = {
             sky: softenSkyTop(sky),
             far: { image: far, depth: 0.05, top: layout.far[0], height: layout.far[1] },
@@ -5142,6 +5325,10 @@ function loadSceneAssets(theme) {
         };
         sceneAssetState[theme] = 'ready';
     }).catch(error => {
+        if (isFestival(theme) && theme !== selectedTheme) {
+            sceneAssetState[theme] = 'idle';
+            return;
+        }
         console.error(`${theme} scene art preload failed; using existing scenery fallback.`, error);
         sceneAssetState[theme] = 'failed';
         ensureLegacyArt(theme);
@@ -5189,9 +5376,17 @@ function loadInteractionAssets(theme) {
     interactionAssetState[theme] = 'loading';
     const paths = INTERACTION_ASSET_PATHS[theme];
     void Promise.all([preloadImage(paths.objects), preloadImage(paths.airborne)]).then(([objects, airborne]) => {
+        if (isFestival(theme) && theme !== selectedTheme) {
+            interactionAssetState[theme] = 'idle';
+            return;
+        }
         interactionAssets[theme] = { objects, airborne };
         interactionAssetState[theme] = 'ready';
     }).catch(error => {
+        if (isFestival(theme) && theme !== selectedTheme) {
+            interactionAssetState[theme] = 'idle';
+            return;
+        }
         console.error(`${theme} object art preload failed; using vector fallbacks.`, error);
         interactionAssetState[theme] = 'failed';
     });
@@ -5333,6 +5528,8 @@ let scoreHistory = (() => {
     try {
         const saved = JSON.parse(localStorage.getItem('zima-skybells-scores') || '[]');
         return Array.isArray(saved) ? saved.flatMap(r => {
+            if (!r || typeof r !== 'object')
+                return [];
             const parsed = parseStoredScore(r?.score);
             if (!parsed || !Number.isSafeInteger(r.bounces) || !Number.isSafeInteger(r.multiplier) ||
                 !THEME_ORDER.includes(r.theme) || (r.mode !== 'classic' && r.mode !== 'zen' && r.mode !== 'expedition'))
@@ -5357,13 +5554,17 @@ if (legacyBest) {
 }
 const GAME_MODES = ['classic', 'zen', 'expedition'];
 function openScoreboard() {
+    if (document.querySelector('.dialog-overlay:not([hidden])'))
+        return;
     scoreboardMode = selectedMode;
     scoreboardPage = 0;
     scoreboardOpen = true;
+    syncDomUi();
     document.querySelector('#close-scores')?.focus();
 }
 function closeScoreboard() {
     scoreboardOpen = false;
+    syncDomUi();
     if (state === 'title')
         document.querySelector('#open-scores')?.focus();
     else
@@ -5550,32 +5751,37 @@ if (boardOverlay) {
     boardOverlay.querySelector('#close-scores')?.addEventListener('click', closeScoreboard);
 }
 const bestByMode = { classic: 0n, zen: 0n, expedition: 0n };
+const bestApproximateByMode = { classic: false, zen: false, expedition: false };
 for (const mode of GAME_MODES) {
     const saved = parseStoredScore(localStorage.getItem(`zima-skybells-best-${mode}`));
-    if (saved)
+    if (saved) {
         bestByMode[mode] = saved.score;
+        bestApproximateByMode[mode] = saved.approximate || localStorage.getItem(`zima-skybells-best-${mode}-approx`) === '1';
+    }
 }
-for (const run of scoreHistory)
-    if (!run.equipped && run.score > bestByMode[run.mode])
+for (const run of scoreHistory) {
+    if (!run.equipped && (run.score > bestByMode[run.mode] ||
+        (run.score === bestByMode[run.mode] && bestApproximateByMode[run.mode] && !run.approximate))) {
         bestByMode[run.mode] = run.score;
-for (const mode of GAME_MODES)
+        bestApproximateByMode[run.mode] = run.approximate === true;
+    }
+}
+for (const mode of GAME_MODES) {
     localStorage.setItem(`zima-skybells-best-${mode}`, bestByMode[mode].toString());
+    localStorage.setItem(`zima-skybells-best-${mode}-approx`, bestApproximateByMode[mode] ? '1' : '0');
+}
 function bestForMode(mode = selectedMode) { return bestByMode[mode]; }
 function bestEquippedForMode(mode = selectedMode) {
     return scoreHistory.filter(run => run.mode === mode && run.equipped)
         .reduce((best, run) => run.score > best ? run.score : best, 0n);
 }
 function bestIsApproximate(mode = selectedMode) {
-    if (mode === selectedMode && !runEquipped && score === bestByMode[mode] && score > 0n)
-        return false;
-    return scoreHistory.some(run => run.mode === mode && !run.equipped && run.score === bestByMode[mode] && run.approximate);
+    return bestApproximateByMode[mode];
 }
 function formatScore(value) { return value.toLocaleString('en-US'); }
 function tierPoints(kind) { return kind === 'crystal' ? 30 : kind === 'silver' ? 20 : 10; }
 function awardPoints(base) {
     score += BigInt(base) * BigInt(multiplier);
-    if (!runDebugged && selectedMode !== 'expedition' && score > bestByMode[selectedMode])
-        bestByMode[selectedMode] = score;
 }
 const cat = {
     x: width / 2,
@@ -5605,25 +5811,26 @@ function releaseFestivalAssets(theme) {
     if (!isFestival(theme))
         return;
     // Keep only the active festival's large paintings decoded during long play.
-    if (continuousState[theme] === 'ready') {
+    if (continuousState[theme] !== 'loading' && continuousState[theme] !== 'idle') {
         const art = seasonContinuousArt[theme];
         art.world = new Image();
         art.upper = new Image();
         art.starfield = new Image();
         continuousState[theme] = 'idle';
     }
-    if (sceneAssetState[theme] === 'ready') {
+    if (sceneAssetState[theme] !== 'loading') {
         delete sceneAssets[theme];
         sceneAssetState[theme] = 'idle';
     }
-    if (interactionAssetState[theme] === 'ready') {
+    if (interactionAssetState[theme] !== 'loading') {
         delete interactionAssets[theme];
         interactionAssetState[theme] = 'idle';
     }
-    if (upperRealmArt[theme].state === 'ready') {
+    if (upperRealmArt[theme].state !== 'loading') {
         upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
         delete upperFootholdArt[theme];
     }
+    delete THEME_ART[theme];
     delete festivalBedArt[theme];
 }
 function setTheme(theme) {
@@ -5675,9 +5882,13 @@ function recordScore() {
     if (selectedMode === 'expedition' && state !== 'expeditionComplete')
         return;
     if (!runEquipped) {
-        if (score > bestByMode[selectedMode])
+        if (score > bestByMode[selectedMode] ||
+            (score === bestByMode[selectedMode] && bestApproximateByMode[selectedMode])) {
             bestByMode[selectedMode] = score;
+            bestApproximateByMode[selectedMode] = false;
+        }
         localStorage.setItem(`zima-skybells-best-${selectedMode}`, bestByMode[selectedMode].toString());
+        localStorage.setItem(`zima-skybells-best-${selectedMode}-approx`, bestApproximateByMode[selectedMode] ? '1' : '0');
     }
     scoreHistory.push({ score, equipped: runEquipped, bounces: bellCount, multiplier,
         retries: selectedMode === 'expedition' ? expeditionRetries : undefined,
@@ -6015,7 +6226,7 @@ function togglePause() {
 }
 function currentMusicContext() {
     return {
-        theme: baseSeason(selectedTheme),
+        theme: selectedTheme,
         altitude: cameraY,
         verticalVelocity: cat.vy,
         state,
@@ -6030,12 +6241,12 @@ function update(dt) {
             updateMusic(currentMusicContext());
         return;
     }
-    if (!paused)
-        updateProgressEffects(dt);
+    if (paused)
+        return;
+    updateProgressEffects(dt);
     elapsed += dt;
     updateSnow(dt);
-    if (!paused)
-        updateMusic(currentMusicContext());
+    updateMusic(currentMusicContext());
     if (messageTimer > 0)
         messageTimer -= dt;
     if (cat.landedFlash > 0)
@@ -6043,12 +6254,10 @@ function update(dt) {
     updateEffects(dt);
     if (cameraShake > 0)
         cameraShake = Math.max(0, cameraShake - dt);
-    if (state === 'playing' && !paused) {
+    if (state === 'playing') {
         const fallSpeed = 86 + Math.min(110, bellCount * 0.65);
         fieldDrop += fallSpeed * dt;
     }
-    if (paused)
-        return;
     if (launchBuffer > 0) {
         launchBuffer = Math.max(0, launchBuffer - dt);
         if (launchBuffer === 0)

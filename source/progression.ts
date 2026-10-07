@@ -346,9 +346,11 @@ function drawProgressEffects(): void {
 }
 function rerollCampRoute(): boolean {
   if (state !== 'expeditionCheckpoint' || progress.supplies.routeReroll < 1) return false;
+  const firstOrdinal = bells[0]?.id ?? Math.max(1, bellCount + 1);
   progress.supplies.routeReroll--; runEquipped = true; saveProgress();
   bells = []; moths = []; runCrates = [];
-  generateInitialPath((bellCount || 1) + 1, expeditionCheckpointY + 205);
+  nextBonusBell = firstOrdinal + 17;
+  generateInitialPath(firstOrdinal, expeditionCheckpointY + 205);
   message = 'NEW ROUTE'; messageTimer = 1.5;
   return true;
 }

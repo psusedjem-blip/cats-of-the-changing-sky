@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cats of the Changing Sky",
-  "version": "3.36.0",
+  "version": "3.36.1",
   "description": "Four cats climb eight painted worlds in Classic, Zen, and Expedition modes.",
   "permissions": ["storage"],
   "action": {

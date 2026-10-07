@@ -105,12 +105,25 @@ function loadContinuousSeason(theme: ThemeName): void {
   continuousState[theme] = 'loading';
   const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
     : seasonContinuousArt[theme];
+  const { world, upper, starfield } = art;
   art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.png` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
   art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.png` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
   art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.png` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
-  void Promise.all([art.world, art.upper, art.starfield].map(image => image.decode())).then(() => {
+  void Promise.all([world, upper, starfield].map(image => image.decode())).then(() => {
+    if (art.world !== world || art.upper !== upper || art.starfield !== starfield) return;
+    if (isFestival(theme) && theme !== selectedTheme) {
+      art.world = new Image(); art.upper = new Image(); art.starfield = new Image();
+      continuousState[theme] = 'idle';
+      return;
+    }
     continuousState[theme] = 'ready';
   }).catch(error => {
+    if (art.world !== world || art.upper !== upper || art.starfield !== starfield) return;
+    if (isFestival(theme) && theme !== selectedTheme) {
+      art.world = new Image(); art.upper = new Image(); art.starfield = new Image();
+      continuousState[theme] = 'idle';
+      return;
+    }
     continuousState[theme] = 'failed';
     console.warn(`${theme} continuous world unavailable; using earlier scenery.`, error);
   });
@@ -494,25 +507,47 @@ function loadUpperRealm(theme: ThemeName): void {
   const { mid, high, bridge } = art;
   let decoding = false;
   const check = (): void => {
+    if (upperRealmArt[theme] !== art) return;
     if (decoding || !mid.complete || !high.complete || !bridge.complete ||
         !mid.naturalWidth || !high.naturalWidth || !bridge.naturalWidth) return;
     decoding = true;
     void Promise.all([mid.decode(), high.decode(), bridge.decode()]).then(() => {
+      if (upperRealmArt[theme] !== art) return;
       // Decoding finishes before any of these images are copied to a canvas.
+      if (isFestival(theme) && theme !== selectedTheme) {
+        upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+        delete upperFootholdArt[theme];
+        return;
+      }
       art.state = 'ready';
       if (theme === selectedTheme) prepareUpperTerrain(theme);
     }).catch(error => {
+      if (upperRealmArt[theme] !== art) return;
+      if (isFestival(theme) && theme !== selectedTheme) {
+        upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+        delete upperFootholdArt[theme];
+        return;
+      }
       art.state = 'failed';
       console.error(`${theme} upper realm art could not be decoded.`, error);
     });
   };
   mid.onload = check;
   high.onload = check;
-  mid.onerror = high.onerror = () => { art.state = 'failed'; console.error(`${theme} upper realm art failed to load.`); };
+  const fail = (): void => {
+    if (upperRealmArt[theme] !== art) return;
+    if (isFestival(theme) && theme !== selectedTheme) {
+      upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
+      delete upperFootholdArt[theme];
+      return;
+    }
+    art.state = 'failed'; console.error(`${theme} upper realm art failed to load.`);
+  };
+  mid.onerror = high.onerror = fail;
   mid.src = UPPER_REALM_PATHS[baseSeason(theme)].mid;
   high.src = UPPER_REALM_PATHS[baseSeason(theme)].high;
   bridge.onload = check;
-  bridge.onerror = () => { art.state = 'failed'; console.error(`${theme} bridge art failed to load.`); };
+  bridge.onerror = fail;
   bridge.src = `assets/themes/${baseSeason(theme)}/${baseSeason(theme)}-bridge.webp`;
   const foothold = new Image();
   foothold.src = UPPER_FOOTHOLD_PATHS[theme];

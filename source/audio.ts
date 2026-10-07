@@ -49,7 +49,18 @@ function resumeAudioContext(): void {
 }
 
 function resumeMusicClock(): void {
-  if (audioCtx) musicNext = audioCtx.currentTime + 0.08;
+  if (!audioCtx || !musicGain || !masterGain) return;
+  const now = audioCtx.currentTime;
+  const outgoing = musicGain;
+  const incoming = audioCtx.createGain();
+  incoming.gain.setValueAtTime(0.0001, now);
+  incoming.gain.setTargetAtTime(0.87 * musicLevel, now, 0.035);
+  incoming.connect(masterGain);
+  musicGain = incoming;
+  outgoing.gain.cancelScheduledValues(now);
+  outgoing.gain.setTargetAtTime(0.0001, now, 0.025);
+  window.setTimeout(() => outgoing.disconnect(), 3000);
+  musicNext = now + 0.08;
 }
 
 function resetMusicForTheme(): void {
@@ -70,7 +81,7 @@ function toggleMute(isPaused: boolean): void {
   muted = !muted;
   localStorage.setItem('zima-skybells-muted', muted ? '1' : '0');
   syncMasterAudio(isPaused);
-  if (!muted && audioCtx) musicNext = audioCtx.currentTime + 0.08;
+  if (!muted) resumeMusicClock();
 }
 
 function ensureAudio(): void {
@@ -361,6 +372,93 @@ function scheduleAutumnBar(bar: number, when: number): number {
   return barLen;
 }
 
+function scheduleStarlightEveBar(bar: number, when: number): number {
+  const beat = 0.29;
+  const length = beat * 7;
+  const progression = [
+    { root: 49, chord: [49, 52, 56, 59, 63], melody: [75, 80, 78] },
+    { root: 45, chord: [45, 49, 52, 56, 59], melody: [73, 76, 80] },
+    { root: 52, chord: [52, 56, 59, 63, 66], melody: [78, 83, 80] },
+    { root: 47, chord: [47, 51, 54, 58, 61], melody: [75, 78, 73] },
+  ];
+  const p = progression[(bar + Math.floor(bar / 8)) % progression.length];
+  const arpeggio = [0, 2, 4, 1, 3, 4, 2];
+  for (let i = 0; i < arpeggio.length; i++) {
+    if (i === 3 && bar % 8 < 2) continue;
+    schedulePiano(p.chord[arpeggio[i]] + 12, when + i * beat, beat * 1.35, i === 0 ? 0.017 : 0.011);
+  }
+  scheduleWarmPad(p.chord[2], when, length * 0.96, 0.0048 + musicLift * 0.002);
+  scheduleCello(p.root, when, length * 0.92, musicDescending ? 0.007 : 0.010);
+  if (bar % 2 === 0) scheduleChime(p.melody[0], when + beat * 2.5, 0.55, 0.009);
+  if (bar % 4 === 3) scheduleChime(p.melody[1], when + beat * 5.5, 0.43, 0.007);
+  if (musicLift > 0.35 && bar % 4 === 1) schedulePixelPluck(p.melody[2] + 12, when + beat * 4.2, 0.18, 0.0035);
+  return length;
+}
+
+function scheduleGreatEggHuntBar(bar: number, when: number): number {
+  const beat = 0.30;
+  const length = beat * 5;
+  const progression = [
+    { root: 54, chord: [54, 58, 61, 66], melody: [78, 85, 82] },
+    { root: 61, chord: [61, 65, 68, 73], melody: [80, 82, 77] },
+    { root: 56, chord: [56, 60, 63, 68], melody: [75, 82, 80] },
+    { root: 59, chord: [59, 63, 66, 71], melody: [78, 75, 83] },
+  ];
+  const p = progression[(bar + Math.floor(bar / 8) * 3) % progression.length];
+  scheduleCello(p.root - 12, when, length * 0.88, 0.007);
+  scheduleWarmPad(p.chord[1], when, length * 0.90, 0.0036 + musicLift * 0.001);
+  schedulePixelPluck(p.chord[0] + 24, when, 0.20, 0.0045);
+  scheduleMallet(p.melody[0], when + beat * 0.72, 0.38, 0.010);
+  schedulePiano(p.chord[2] + 12, when + beat * 2, beat * 1.2, 0.014);
+  if (bar % 4 !== 3) scheduleMallet(p.melody[1], when + beat * 3.28, 0.34, 0.008);
+  if (bar % 2 === 1) schedulePixelPluck(p.melody[2] + 12, when + beat * 4.12, 0.17, 0.004);
+  if (musicLift > 0.45 && bar % 4 === 2) scheduleChime(p.melody[1] + 12, when + beat * 1.3, 0.28, 0.004);
+  return length;
+}
+
+function scheduleFireworksFairBar(bar: number, when: number): number {
+  const beat = 0.27;
+  const length = beat * 8;
+  const progression = [
+    { root: 55, chord: [55, 59, 62, 67], melody: [79, 86, 83] },
+    { root: 50, chord: [50, 54, 57, 62], melody: [78, 81, 86] },
+    { root: 60, chord: [60, 64, 67, 72], melody: [84, 88, 83] },
+    { root: 57, chord: [57, 61, 64, 69], melody: [81, 85, 79] },
+  ];
+  const p = progression[(bar + Math.floor(bar / 8)) % progression.length];
+  scheduleCello(p.root - 12, when, length * 0.90, musicDescending ? 0.007 : 0.011);
+  scheduleWarmPad(p.chord[2], when, length * 0.93, 0.004 + musicLift * 0.0018);
+  schedulePiano(p.chord[0] + 12, when, beat * 2.1, 0.020);
+  schedulePiano(p.chord[2] + 12, when + beat * 2.8, beat * 1.4, 0.013);
+  schedulePiano(p.chord[3] + 12, when + beat * 5.8, beat * 1.4, 0.014);
+  if (bar % 4 !== 3) scheduleMallet(p.melody[0], when + beat * 1.5, 0.48, 0.011);
+  if (bar % 2 === 1) scheduleChime(p.melody[1], when + beat * 4.2, 0.46, 0.010);
+  if (bar % 4 === 2) scheduleMallet(p.melody[2], when + beat * 6.6, 0.32, 0.007);
+  if (!musicDescending && bar % 2 === 0) scheduleBrush(when + beat * 3.9, 0.0019);
+  return length;
+}
+
+function scheduleMoonlitMasqueradeBar(bar: number, when: number): number {
+  const beat = 0.36;
+  const length = beat * 6;
+  const progression = [
+    { root: 52, chord: [52, 55, 59, 64], melody: [79, 75, 83] },
+    { root: 47, chord: [47, 50, 54, 59], melody: [78, 74, 81] },
+    { root: 49, chord: [49, 52, 56, 61], melody: [80, 76, 83] },
+    { root: 44, chord: [44, 47, 51, 56], melody: [75, 71, 78] },
+  ];
+  const p = progression[(bar + Math.floor(bar / 8) * 2) % progression.length];
+  scheduleCello(p.root, when, length * 0.97, musicDescending ? 0.008 : 0.012);
+  scheduleWarmPad(p.chord[1], when, length * 0.94, 0.005 + musicLift * 0.001);
+  schedulePiano(p.chord[0] + 12, when, beat * 1.7, 0.017);
+  schedulePiano(p.chord[2] + 12, when + beat * 2, beat * 1.4, 0.011);
+  schedulePiano(p.chord[3] + 12, when + beat * 4, beat * 1.4, 0.011);
+  if (bar % 4 !== 3) scheduleMallet(p.melody[0], when + beat * 0.95, 0.62, 0.008);
+  if (bar % 4 === 1 || bar % 4 === 2) scheduleChime(p.melody[1], when + beat * 3.2, 0.48, 0.006);
+  if (bar % 8 >= 4) schedulePixelPluck(p.melody[2], when + beat * 5.1, 0.21, 0.0035);
+  return length;
+}
+
 function updateMusic(context: MusicContext): void {
   if (!audioCtx || audioCtx.state !== 'running' || muted) return;
   const now = audioCtx.currentTime;
@@ -373,11 +471,19 @@ function updateMusic(context: MusicContext): void {
     if (context.theme === 'winter') len = scheduleWinterBar(musicBar, musicNext);
     else if (context.theme === 'spring') len = scheduleSpringBar(musicBar, musicNext);
     else if (context.theme === 'summer') len = scheduleSummerBar(musicBar, musicNext);
-    else len = scheduleAutumnBar(musicBar, musicNext);
+    else if (context.theme === 'autumn') len = scheduleAutumnBar(musicBar, musicNext);
+    else if (context.theme === 'starlight-eve') len = scheduleStarlightEveBar(musicBar, musicNext);
+    else if (context.theme === 'great-egg-hunt') len = scheduleGreatEggHuntBar(musicBar, musicNext);
+    else if (context.theme === 'fireworks-fair') len = scheduleFireworksFairBar(musicBar, musicNext);
+    else len = scheduleMoonlitMasqueradeBar(musicBar, musicNext);
     const chapter = context.chapter;
-    scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
+    if (!isFestival(context.theme)) scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
     if (chapter !== musicChapterBand) {
-      scheduleChime((context.theme === 'winter' ? 74 : context.theme === 'spring' ? 79 : context.theme === 'summer' ? 81 : 76) + chapter * 2,
+      const chapterNote: Record<ThemeName, number> = {
+        winter: 74, spring: 79, summer: 81, autumn: 76,
+        'starlight-eve': 87, 'great-egg-hunt': 90, 'fireworks-fair': 88, 'moonlit-masquerade': 75,
+      };
+      scheduleChime(chapterNote[context.theme] + chapter * 2,
         musicNext + len * 0.15, 0.34, 0.006);
       musicChapterBand = chapter;
     }

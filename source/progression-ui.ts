@@ -30,6 +30,7 @@ function refreshProgressUi(): void {
   const inventory = document.querySelector<HTMLElement>('#powerup-bar');
   const inventorySignature = `${selectedTheme}|${selectedMode}|${state}|${progress.fish}|${devFish}|${progress.owned.join(',')}|${progress.movement}|${progress.utility}|${progress.enchantment}|${SUPPLY_IDS.map(id => progress.supplies[id]).join(',')}|${catBedArmed}|${campProvisionArmed}|${runBedUsed}`;
   if (inventory && inventorySignature !== lastInventorySignature) {
+    const focusedSlot = Array.from(inventory.children).indexOf(document.activeElement as Element);
     lastInventorySignature = inventorySignature;
     hideInventoryTooltip();
     inventory.replaceChildren();
@@ -79,6 +80,7 @@ function refreshProgressUi(): void {
     fish.addEventListener('focus', () => showInventoryTooltip(fish, 'Fish', fishDetail));
     fish.addEventListener('blur', hideInventoryTooltip);
     inventory.append(fish);
+    if (focusedSlot >= 0) inventory.querySelectorAll<HTMLButtonElement>('button')[focusedSlot]?.focus();
   }
   const reroll = document.querySelector<HTMLButtonElement>('#reroll-route');
   if (reroll) reroll.disabled = state !== 'expeditionCheckpoint' || progress.supplies.routeReroll === 0;
@@ -86,6 +88,7 @@ function refreshProgressUi(): void {
 function renderShop(): void {
   const list = document.querySelector<HTMLElement>('#shop-items');
   if (!list) return;
+  const focusedItem = Array.from(list.querySelectorAll('button')).indexOf(document.activeElement as HTMLButtonElement);
   list.replaceChildren();
   for (const item of PROGRESSION_ITEMS) {
     const owned = item.slot ? progress.owned.includes(item.id) : false;
@@ -105,6 +108,10 @@ function renderShop(): void {
     button.addEventListener('click', () => { if (owned) equipItem(item.id); else purchaseItem(item.id); });
     card.append(icon, detail, button); list.append(card);
   }
+  if (focusedItem >= 0) {
+    const replacement = list.querySelectorAll<HTMLButtonElement>('button')[focusedItem];
+    (replacement && !replacement.disabled ? replacement : document.querySelector<HTMLButtonElement>('#close-shop'))?.focus();
+  }
 }
 function closeProgressDialogs(): void {
   for (const id of ['shop-overlay', 'settings-overlay']) {
@@ -116,6 +123,7 @@ function closeProgressDialogs(): void {
   canvas.focus();
 }
 function openProgressDialog(id: 'shop-overlay' | 'settings-overlay'): void {
+  if (scoreboardOpen) closeScoreboard();
   const alreadyOpen = ['shop-overlay', 'settings-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
   const wasPaused = alreadyOpen ? pauseBeforeDialog : paused;
   closeProgressDialogs();

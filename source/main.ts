@@ -396,6 +396,10 @@ function loadSceneAssets(theme: ThemeName): void {
   const layers = Promise.all([paths.sky, paths.far, paths.mid, paths.near, paths.ground].map(preloadImage));
   const propAsset = paths.prop ? preloadImage(paths.prop).catch(error => { console.warn(`${theme} landmark art unavailable.`, error); return null; }) : Promise.resolve(null);
   void Promise.all([layers, propAsset]).then(([[sky, far, mid, near, ground], prop]) => {
+    if (isFestival(theme) && theme !== selectedTheme) {
+      sceneAssetState[theme] = 'idle';
+      return;
+    }
     sceneAssets[theme] = {
       sky: softenSkyTop(sky),
       far: { image: far, depth: 0.05, top: layout.far[0], height: layout.far[1] },
@@ -408,6 +412,10 @@ function loadSceneAssets(theme: ThemeName): void {
     };
     sceneAssetState[theme] = 'ready';
   }).catch(error => {
+    if (isFestival(theme) && theme !== selectedTheme) {
+      sceneAssetState[theme] = 'idle';
+      return;
+    }
     console.error(`${theme} scene art preload failed; using existing scenery fallback.`, error);
     sceneAssetState[theme] = 'failed';
     ensureLegacyArt(theme);
@@ -459,9 +467,17 @@ function loadInteractionAssets(theme: ThemeName): void {
   interactionAssetState[theme] = 'loading';
   const paths = INTERACTION_ASSET_PATHS[theme];
   void Promise.all([preloadImage(paths.objects), preloadImage(paths.airborne)]).then(([objects, airborne]) => {
+    if (isFestival(theme) && theme !== selectedTheme) {
+      interactionAssetState[theme] = 'idle';
+      return;
+    }
     interactionAssets[theme] = { objects, airborne };
     interactionAssetState[theme] = 'ready';
   }).catch(error => {
+    if (isFestival(theme) && theme !== selectedTheme) {
+      interactionAssetState[theme] = 'idle';
+      return;
+    }
     console.error(`${theme} object art preload failed; using vector fallbacks.`, error);
     interactionAssetState[theme] = 'failed';
   });
@@ -608,6 +624,7 @@ let scoreHistory: ScoreRecord[] = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem('zima-skybells-scores') || '[]');
     return Array.isArray(saved) ? saved.flatMap(r => {
+      if (!r || typeof r !== 'object') return [];
       const parsed = parseStoredScore(r?.score);
       if (!parsed || !Number.isSafeInteger(r.bounces) || !Number.isSafeInteger(r.multiplier) ||
           !THEME_ORDER.includes(r.theme) || (r.mode !== 'classic' && r.mode !== 'zen' && r.mode !== 'expedition')) return [];
@@ -629,14 +646,17 @@ if (legacyBest) {
 const GAME_MODES: GameMode[] = ['classic', 'zen', 'expedition'];
 
 function openScoreboard(): void {
+  if (document.querySelector('.dialog-overlay:not([hidden])')) return;
   scoreboardMode = selectedMode;
   scoreboardPage = 0;
   scoreboardOpen = true;
+  syncDomUi();
   document.querySelector<HTMLButtonElement>('#close-scores')?.focus();
 }
 
 function closeScoreboard(): void {
   scoreboardOpen = false;
+  syncDomUi();
   if (state === 'title') document.querySelector<HTMLButtonElement>('#open-scores')?.focus();
   else canvas.focus();
 }
@@ -805,12 +825,25 @@ if (boardOverlay) {
   boardOverlay.querySelector('#close-scores')?.addEventListener('click', closeScoreboard);
 }
 const bestByMode: Record<GameMode, bigint> = { classic: 0n, zen: 0n, expedition: 0n };
+const bestApproximateByMode: Record<GameMode, boolean> = { classic: false, zen: false, expedition: false };
 for (const mode of GAME_MODES) {
   const saved = parseStoredScore(localStorage.getItem(`zima-skybells-best-${mode}`));
-  if (saved) bestByMode[mode] = saved.score;
+  if (saved) {
+    bestByMode[mode] = saved.score;
+    bestApproximateByMode[mode] = saved.approximate || localStorage.getItem(`zima-skybells-best-${mode}-approx`) === '1';
+  }
 }
-for (const run of scoreHistory) if (!run.equipped && run.score > bestByMode[run.mode]) bestByMode[run.mode] = run.score;
-for (const mode of GAME_MODES) localStorage.setItem(`zima-skybells-best-${mode}`, bestByMode[mode].toString());
+for (const run of scoreHistory) {
+  if (!run.equipped && (run.score > bestByMode[run.mode] ||
+    (run.score === bestByMode[run.mode] && bestApproximateByMode[run.mode] && !run.approximate))) {
+    bestByMode[run.mode] = run.score;
+    bestApproximateByMode[run.mode] = run.approximate === true;
+  }
+}
+for (const mode of GAME_MODES) {
+  localStorage.setItem(`zima-skybells-best-${mode}`, bestByMode[mode].toString());
+  localStorage.setItem(`zima-skybells-best-${mode}-approx`, bestApproximateByMode[mode] ? '1' : '0');
+}
 
 function bestForMode(mode: GameMode = selectedMode): bigint { return bestByMode[mode]; }
 function bestEquippedForMode(mode: GameMode = selectedMode): bigint {
@@ -819,8 +852,7 @@ function bestEquippedForMode(mode: GameMode = selectedMode): bigint {
 }
 
 function bestIsApproximate(mode: GameMode = selectedMode): boolean {
-  if (mode === selectedMode && !runEquipped && score === bestByMode[mode] && score > 0n) return false;
-  return scoreHistory.some(run => run.mode === mode && !run.equipped && run.score === bestByMode[mode] && run.approximate);
+  return bestApproximateByMode[mode];
 }
 
 function formatScore(value: bigint): string { return value.toLocaleString('en-US'); }
@@ -829,7 +861,6 @@ function tierPoints(kind: BellKind): number { return kind === 'crystal' ? 30 : k
 
 function awardPoints(base: number): void {
   score += BigInt(base) * BigInt(multiplier);
-  if (!runDebugged && selectedMode !== 'expedition' && score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
 }
 
 const cat = {
@@ -863,17 +894,18 @@ function themeMeta(): (typeof THEME_META)[ThemeName] {
 function releaseFestivalAssets(theme: ThemeName): void {
   if (!isFestival(theme)) return;
   // Keep only the active festival's large paintings decoded during long play.
-  if (continuousState[theme] === 'ready') {
+  if (continuousState[theme] !== 'loading' && continuousState[theme] !== 'idle') {
     const art = seasonContinuousArt[theme];
     art.world = new Image(); art.upper = new Image(); art.starfield = new Image();
     continuousState[theme] = 'idle';
   }
-  if (sceneAssetState[theme] === 'ready') { delete sceneAssets[theme]; sceneAssetState[theme] = 'idle'; }
-  if (interactionAssetState[theme] === 'ready') { delete interactionAssets[theme]; interactionAssetState[theme] = 'idle'; }
-  if (upperRealmArt[theme].state === 'ready') {
+  if (sceneAssetState[theme] !== 'loading') { delete sceneAssets[theme]; sceneAssetState[theme] = 'idle'; }
+  if (interactionAssetState[theme] !== 'loading') { delete interactionAssets[theme]; interactionAssetState[theme] = 'idle'; }
+  if (upperRealmArt[theme].state !== 'loading') {
     upperRealmArt[theme] = { mid: new Image(), high: new Image(), bridge: new Image(), state: 'idle' };
     delete upperFootholdArt[theme];
   }
+  delete THEME_ART[theme];
   delete festivalBedArt[theme];
 }
 
@@ -925,8 +957,13 @@ function recordScore(): void {
   if (runDebugged || score <= 0n || bellCount <= 0) return;
   if (selectedMode === 'expedition' && state !== 'expeditionComplete') return;
   if (!runEquipped) {
-    if (score > bestByMode[selectedMode]) bestByMode[selectedMode] = score;
+    if (score > bestByMode[selectedMode] ||
+      (score === bestByMode[selectedMode] && bestApproximateByMode[selectedMode])) {
+      bestByMode[selectedMode] = score;
+      bestApproximateByMode[selectedMode] = false;
+    }
     localStorage.setItem(`zima-skybells-best-${selectedMode}`, bestByMode[selectedMode].toString());
+    localStorage.setItem(`zima-skybells-best-${selectedMode}-approx`, bestApproximateByMode[selectedMode] ? '1' : '0');
   }
   scoreHistory.push({ score, equipped: runEquipped, bounces: bellCount, multiplier,
     retries: selectedMode === 'expedition' ? expeditionRetries : undefined,
@@ -1240,7 +1277,7 @@ function togglePause(): void {
 
 function currentMusicContext(): MusicContext {
   return {
-    theme: baseSeason(selectedTheme),
+    theme: selectedTheme,
     altitude: cameraY,
     verticalVelocity: cat.vy,
     state,
@@ -1252,20 +1289,20 @@ function currentMusicContext(): MusicContext {
 
 function update(dt: number): void {
   if (scoreboardOpen) { if (!paused) updateMusic(currentMusicContext()); return; }
-  if (!paused) updateProgressEffects(dt);
+  if (paused) return;
+  updateProgressEffects(dt);
   elapsed += dt;
   updateSnow(dt);
-  if (!paused) updateMusic(currentMusicContext());
+  updateMusic(currentMusicContext());
   if (messageTimer > 0) messageTimer -= dt;
   if (cat.landedFlash > 0) cat.landedFlash -= dt;
   updateEffects(dt);
   if (cameraShake > 0) cameraShake = Math.max(0, cameraShake - dt);
-  if (state === 'playing' && !paused) {
+  if (state === 'playing') {
     const fallSpeed = 86 + Math.min(110, bellCount * 0.65);
     fieldDrop += fallSpeed * dt;
   }
 
-  if (paused) return;
   if (launchBuffer > 0) {
     launchBuffer = Math.max(0, launchBuffer - dt);
     if (launchBuffer === 0) launchRun();

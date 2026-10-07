@@ -28,7 +28,7 @@ The scenery moves with the ascent rather than repeating a short backdrop. Each s
 | **Summer** 🌻 | Sunflower fields, warm open sky, and a swallow. |
 | **Autumn** 🍂 | Harvest fields, pumpkins, lanterns, and a crow. |
 
-Four festival routes branch from those seasons with new locations, targets, airborne visitors, Cat Beds, and changing skies:
+Four festival routes branch from those seasons with their own music, locations, targets, airborne visitors, Cat Beds, and changing skies:
 
 | Route | Unlock cost | Location and visitor |
 | --- | ---: | --- |
