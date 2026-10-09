@@ -49,7 +49,9 @@ jobs:
             title="Cats of the Changing Sky v${version} (beta, ${short_sha})"
             printf 'Beta build from `beta` at commit `%s`.\n\n' "$GITHUB_SHA" > "$notes"
           fi
-          printf 'Download `%s` for a manual unpacked install. The `-store.zip` package has `manifest.json` at its root and excludes local test controls.\n' "${manual_zip##*/}" >> "$notes"
+          printf 'For Chrome or Edge, download `%s`, extract it, and load the `zima-skybells-extension` folder as an unpacked extension.\n\n' "${manual_zip##*/}" >> "$notes"
+          printf 'For Firefox 142 or newer, use `cats-of-the-changing-sky-v%s-firefox.xpi` when that Mozilla-signed asset is attached. In Firefox, open Add-ons and themes, then the gear menu > Install Add-on From File. The unsigned ZIP files are not permanent Firefox installers.\n\n' "$version" >> "$notes"
+          printf 'The `%s` archive is for browser-store submissions. It has `manifest.json` at its root and excludes local test controls.\n' "${store_zip##*/}" >> "$notes"
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$tag" "$manual_zip" "$store_zip" --clobber --repo "$GITHUB_REPOSITORY"

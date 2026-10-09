@@ -2,7 +2,7 @@
 
 **For Henry.** 🐈✨
 
-Cats of the Changing Sky is a small, self-contained climbing game for desktop Chrome and Microsoft Edge. Choose a cat, a season, and a way to play. Steer from one floating target to the next as a painted village gives way to mountains, weather, and an open sky. Each contact sends your cat higher; a missed landing can send them all the way back down.
+Cats of the Changing Sky is a small, self-contained climbing game for desktop Chrome, Microsoft Edge, and Firefox. Choose a cat, a season, and a way to play. Steer from one floating target to the next as a painted village gives way to mountains, weather, and an open sky. Each contact sends your cat higher; a missed landing can send them all the way back down.
 
 The game opens in its own browser tab when you click the extension icon. It has no account or online play. Scores, preferences, fish, gear, and supplies are saved in the browser on that device.
 
@@ -79,12 +79,15 @@ Scores from runs using functional gear or supplies are labeled **Equipped**. Ear
 
 ## Install from GitHub
 
-For the current stable release, get the game ZIP from the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). For beta, choose the newest prerelease with a `beta-v` tag on the [releases page](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases). Download the asset named `cats-of-the-changing-sky-v<version>.zip`; GitHub's automatic **Source code** ZIP is different. Extract the download and keep its `zima-skybells-extension` folder in a permanent location.
+For the current stable release, use the [latest release](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases/latest). For beta, choose the newest prerelease with a `beta-v` tag on the [releases page](https://github.com/psusedjem-blip/cats-of-the-changing-sky/releases). Use a release asset matching the version you want; GitHub's automatic **Source code** ZIP is different.
+
+For **Chrome or Edge**, download `cats-of-the-changing-sky-v<version>.zip`. Extract it and keep its `zima-skybells-extension` folder in a permanent location.
 
 - **Chrome:** Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `zima-skybells-extension` folder.
 - **Edge:** Open `edge://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the same folder.
+- **Firefox 142 or newer:** On a release that includes `cats-of-the-changing-sky-v<version>-firefox.xpi`, download that Mozilla-signed file. In Firefox, open **Add-ons and themes**, select the gear icon, choose **Install Add-on From File**, open the XPI, and select **Add**. Keep the XPI to install the same version on another computer.
 
-The selected folder should contain `manifest.json`. Click or pin the extension's cat icon to open the game. This GitHub download is a manual install: future releases need to be downloaded and loaded again. Scores and settings are stored locally by the browser installation.
+The Chrome or Edge folder should contain `manifest.json`. Click or pin the extension's cat icon to open the game. The signed XPI is the permanent Firefox install; the ZIP files are unsigned and are not permanent Firefox installers. For temporary Firefox testing, open `about:debugging` > **This Firefox** > **Load Temporary Add-on** and select the extracted folder's `manifest.json`. Temporary add-ons disappear when Firefox closes. These manual installs require a new package for each update. Scores and settings are stored locally by each browser installation and do not transfer between browsers.
 
 ## About the art
 
@@ -92,11 +95,11 @@ The character and scenery art was **generated with AI**, then selected, revised,
 
 ## Beta source and build
 
-The `main` branch is the stable game. New work goes to `beta` until it is ready for `main`. Pushing either branch runs the build and package checks and publishes two ZIPs for that commit; `main` releases are marked Latest and `beta` releases are prereleases. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
+The `main` branch is the stable game. New work goes to `beta` until it is ready for `main`. Pushing either branch runs the build and package checks and publishes two ZIPs for that commit; `main` releases are marked Latest and `beta` releases are prereleases. A Mozilla-signed Firefox XPI is attached to a matching release after signing; GitHub Actions cannot produce Mozilla's signature. The runtime is `index.html`, `background.js`, `style.css`, compiled `main.js`, and `assets/`. Edit the TypeScript files in `source/`; `main.ts` brings them together into the generated `main.js`. Music lives in `source/audio.ts`, climbing and contacts in `source/gameplay.ts`, scene painting in `source/scenery.ts` and `source/scene-render.ts`, characters and targets in their render files, and menus in `source/hud-render.ts` and `source/progression-ui.ts`. The runtime stylesheet is `style.css`.
 
 Local unpacked and sideload test builds include `test-build.js`. Press `Ctrl+Alt+T` to toggle test mode. While active, festival locks are bypassed, `F` toggles flight, and `W`/`S` or Up/Down fly vertically. Settings offers 100 temporary test fish for checking the shop. Test fish expire when the page closes, and test runs do not earn permanent fish or enter the score board. Store packages exclude the test script and controls and hard-disable test mode in the bundled JavaScript.
 
-Install Node.js and Python 3, then run `npm ci` and `npm run check`. `npm run build` compiles TypeScript. `npm run package:store` builds the store ZIP with `manifest.json` at its root; `npm run package:sideload` builds the GitHub ZIP with an enclosing extension folder. The packaging script checks archive integrity and asset references before replacing a release ZIP. Review each cat, season, and mode in a browser before distributing a beta package.
+Install Node.js and Python 3, then run `npm ci` and `npm run check`. `npm run build` compiles TypeScript. `npm run package:store` builds the store ZIP with `manifest.json` at its root; `npm run package:sideload` builds the GitHub ZIP with an enclosing extension folder. `npm run package:amo-source` builds the store ZIP and a matching source archive for Mozilla's review. The store ZIP is the unsigned submission package for Firefox Add-ons; Mozilla must sign it before permanent Firefox installation. The packaging script checks archive integrity and asset references before replacing a release ZIP. Review each cat, season, and mode in a browser before distributing a beta package.
 
 The climb uses upward world coordinates. Bells move downward through `fieldDrop`, while painted sky panels use fixed altitude anchors in `source/chapters.ts`. Mystery crates have fixed world positions. Keep the two coordinate systems distinct when changing contacts or scenery. Existing `zima-skybells-*` local storage keys hold scores and preferences; `cats-changing-sky-progression-v1` holds fish, owned gear, equipped slots, and supplies. Increase the manifest version and the `main.js` query version together for each packaged update.
 

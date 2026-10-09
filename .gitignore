@@ -9,10 +9,13 @@ Unused Art/
 !README.md
 scripts/*
 !scripts/package-extension.py
+!scripts/package-amo-source.py
+!scripts/build-amo.py
 
 # Generated packages and local tooling.
 *.zip
 *.zip.tmp
+*.xpi
 node_modules/
 __pycache__/
 *.pyc

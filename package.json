@@ -6,6 +6,7 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "package:store": "npm run build && python scripts/package-extension.py --store",
+    "package:amo-source": "npm run package:store && python scripts/package-amo-source.py",
     "package:sideload": "npm run build && python scripts/package-extension.py"
   },
   "devDependencies": {
