@@ -2,12 +2,18 @@
 .playwright-cli/
 art-source/
 review/
-docs/
+docs/*
+!docs/images/
+docs/images/*
+!docs/images/*-kitten-idle.png
+!docs/images/world-*.webp
+!docs/DEVELOPMENT.md
 media/
 Unused Art/
 *.md
 !README.md
 !CHANGELOG.md
+!docs/DEVELOPMENT.md
 scripts/*
 !scripts/package-extension.py
 !scripts/package-amo-source.py

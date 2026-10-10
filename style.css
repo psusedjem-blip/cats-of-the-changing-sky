@@ -63,7 +63,7 @@ canvas {
 .season-options small, .mode-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
 .mode-options button { min-height: 78px; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: center; }
 .menu-description { margin-top: 13px !important; color: #d9edf5; text-align: center; font-size: 14px; }
-.menu-actions { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+.menu-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
 .menu-actions button { min-width: 140px; }
 .fish-wallet { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 9px !important; color: #ffe7a2; font-weight: 800; }
 .fish-wallet img { width: 25px; height: 25px; object-fit: contain; }
@@ -81,8 +81,6 @@ canvas {
 .powerup-cell img { width: 35px; height: 35px; object-fit: contain; opacity: .42; filter: grayscale(1) brightness(.8); }
 .powerup-cell.owned img { opacity: 1; filter: drop-shadow(0 0 5px var(--accent, #9fe8da)); }
 .powerup-cell.active img { filter: drop-shadow(0 0 7px var(--accent, #9fe8da)); }
-.settings-button { position: fixed; z-index: 3; right: 18px; bottom: 15px; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background: rgba(5,22,37,.72); color: #fff; font: 28px/1 system-ui, sans-serif; cursor: pointer; text-shadow: 0 1px 3px #000; }
-.settings-button:hover, .settings-button:focus-visible { background: #16344c; outline: 2px solid #fff; }
 .dialog-overlay { z-index: 4; background: rgba(2,9,19,.82); }
 .dialog-overlay .ui-panel { background: #071b2b; }
 .dialog-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }

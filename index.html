@@ -17,7 +17,7 @@
       <p id="unlock-feedback" class="unlock-feedback" role="status" aria-live="polite"></p>
       <fieldset><legend>Play mode</legend><div id="mode-options" class="mode-options"></div></fieldset>
       <p id="menu-description" class="menu-description"></p>
-      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button><button id="open-achievements" type="button">Achievements</button></div>
+      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button><button id="open-achievements" type="button">Achievements</button><button id="open-settings" type="button">Settings</button></div>
       <p class="fish-wallet"><img src="assets/progression/fish.webp" alt="" /> <span id="fish-balance">0</span> fish</p>
       <div class="audio-levels" role="group" aria-label="Audio levels"><label>Music <input id="music-level" type="range" min="0" max="100" step="5" value="100"></label><label>Effects <input id="effects-level" type="range" min="0" max="100" step="5" value="100"></label></div>
       <p id="menu-best" class="menu-best"></p>
@@ -46,7 +46,6 @@
   <!-- LOCAL TEST END -->
   <div id="powerup-bar" class="powerup-bar" role="group" aria-label="Number row items and fish"></div>
   <div id="powerup-tooltip" class="powerup-tooltip" role="tooltip" hidden></div>
-  <button id="settings-button" class="settings-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
   <section id="shop-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title" hidden>
     <div class="ui-panel shop-panel">
       <header class="dialog-header"><h2 id="shop-title">Gear &amp; supplies</h2><button id="close-shop" type="button">Close</button></header>
@@ -63,7 +62,7 @@
         <div><strong>Move</strong><span>A / D, arrow keys, or mouse</span></div>
         <div><strong>Launch / continue</strong><span>Space, Enter, or click</span></div>
         <div><strong>Pause / resume</strong><span>P</span></div>
-        <div><strong>Settings</strong><span>N or the gear button</span></div>
+        <div><strong>Settings</strong><span>N or the upper-right Settings shortcut</span></div>
         <div><strong>Score board</strong><span>L</span></div>
         <div><strong>Music</strong><span>M</span></div>
         <div><strong>Restart</strong><span>R</span></div>
@@ -74,6 +73,8 @@
         <div><strong>Route Reroll</strong><span>9 uses one at an Expedition camp</span></div>
         <div><strong>Fish</strong><span>0 shows your balance</span></div>
       </div>
+      <h3>Scoring</h3>
+      <p>Bronze, silver, and crystal bells start at 10, 20, and 30 points. Each hit scores at the multiplier active when it lands. Airborne catches also score and raise the multiplier for later hits. Results record the final multiplier.</p>
       <h3>Extension icon</h3>
       <p>Choose the cat shown on the browser toolbar. This choice is separate from the cat you play.</p>
       <div id="toolbar-icon-options" class="toolbar-icon-options" role="group" aria-label="Extension toolbar icon"></div>
@@ -96,6 +97,6 @@
     </div>
   </section>
   <script src="test-build.js" data-local-test></script>
-  <script src="main.js?v=3.37.1"></script>
+  <script src="main.js?v=3.38.0"></script>
 </body>
 </html>

@@ -256,7 +256,7 @@ function initProgressionUi(): void {
   });
   document.getElementById('open-shop')?.addEventListener('click', () => openProgressDialog('shop-overlay'));
   document.getElementById('open-achievements')?.addEventListener('click', () => openProgressDialog('achievements-overlay'));
-  document.getElementById('settings-button')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
+  document.getElementById('open-settings')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
   document.getElementById('close-shop')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('close-achievements')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);

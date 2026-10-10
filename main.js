@@ -99,8 +99,8 @@ const SEASON_SKY_COLOR = {
     winter: '#081e40', spring: '#3446a6', summer: '#76b7f5', autumn: '#231838',
     'starlight-eve': '#111b40', 'great-egg-hunt': '#8495c9',
     'fireworks-fair': '#142652', 'moonlit-masquerade': '#20152d',
-    'great-yarn-tangle': '#dbb1aa', 'turtleback-world': '#a6c7bc',
-    'cat-lockup-expedition': '#536889', 'moonlit-aquarium': '#144667',
+    'great-yarn-tangle': '#3a2e68', 'turtleback-world': '#0e2567',
+    'cat-lockup-expedition': '#273a7c', 'moonlit-aquarium': '#172455',
 };
 const seasonContinuousArt = {};
 for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade', 'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium']) {
@@ -124,7 +124,9 @@ function loadContinuousSeason(theme) {
     const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
         : seasonContinuousArt[theme];
     const { world, upper, starfield } = art;
-    art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+    art.world.src = theme === 'great-yarn-tangle' || theme === 'turtleback-world'
+        ? `assets/themes/${theme}/world-v2.webp`
+        : isFestival(theme) ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
     art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
     art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
     void Promise.all([world, upper, starfield].map(image => image.decode())).then(() => {
@@ -244,23 +246,28 @@ function winterSkyHash(value) {
     n ^= n >>> 16;
     return (n >>> 0) / 0x100000000;
 }
+function prepareSkyWisp(image, sx, sy, seed) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 360;
+    const paint = canvas.getContext('2d');
+    paint.drawImage(image, sx, sy, 360, 360, 0, 0, 360, 360);
+    const pixels = paint.getImageData(0, 0, 360, 360);
+    for (let y = 0; y < 360; y++)
+        for (let x = 0; x < 360; x++) {
+            const dx = (x - 180) / 180, dy = (y - 180) / 180;
+            const angle = Math.atan2(dy, dx);
+            const edge = 0.70 + 0.10 * Math.sin(angle * 3 + seed) + 0.08 * Math.sin(angle * 5 - seed * 1.7)
+                + 0.05 * Math.sin(angle * 9 + seed * 0.6);
+            const distance = Math.hypot(dx * 0.82, dy * 1.12);
+            const feather = Math.max(0, Math.min(1, (edge - distance) / 0.38));
+            pixels.data[(y * 360 + x) * 4 + 3] *= feather * feather * (3 - 2 * feather);
+        }
+    paint.putImageData(pixels, 0, 0);
+    return canvas;
+}
 function prepareWinterSkyWisps() {
     const crops = [[0, 160], [660, 360], [0, 960], [660, 1030]];
-    return crops.map(([sourceX, sourceY]) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 360;
-        canvas.height = 360;
-        const paint = canvas.getContext('2d');
-        paint.drawImage(winterStarfield, sourceX, sourceY, 360, 360, 0, 0, 360, 360);
-        paint.globalCompositeOperation = 'destination-in';
-        const mask = paint.createRadialGradient(180, 180, 40, 180, 180, 180);
-        mask.addColorStop(0, '#fff');
-        mask.addColorStop(0.55, 'rgba(255,255,255,0.7)');
-        mask.addColorStop(1, 'rgba(255,255,255,0)');
-        paint.fillStyle = mask;
-        paint.fillRect(0, 0, 360, 360);
-        return canvas;
-    });
+    return crops.map(([sourceX, sourceY], index) => prepareSkyWisp(winterStarfield, sourceX, sourceY, index + 1));
 }
 function drawWinterHighSky(pixelsPerWorld) {
     // Beyond the authored panorama, motifs occupy unique world altitudes rather
@@ -273,19 +280,18 @@ function drawWinterHighSky(pixelsPerWorld) {
     if (winterStarfield.complete && winterStarfield.naturalWidth > 0) {
         if (!winterSkyWisps)
             winterSkyWisps = prepareWinterSkyWisps();
-        const wispFirst = Math.max(0, Math.floor((backdropCameraY - 34000 - 3000) / 3200));
-        const wispLast = Math.floor((backdropCameraY + visibleWorldSpan + 3000 - 34000) / 3200);
+        const wispFirst = Math.max(0, Math.floor((backdropCameraY - 34000 - 3000) / 2200));
+        const wispLast = Math.floor((backdropCameraY + visibleWorldSpan + 3000 - 34000) / 2200);
         for (let index = wispFirst; index <= wispLast; index++) {
-            const worldY = 34000 + index * 3200 + winterSkyHash(index * 73 + 3) * 600;
+            const worldY = 34000 + index * 2200 + (winterSkyHash(index * 73 + 3) - 0.5) * 1300;
             const y = skyY(worldY);
-            const side = winterSkyHash(index * 79 + 9) < 0.5 ? 0.18 : 0.82;
-            const x = width * (side + (winterSkyHash(index * 83 + 5) - 0.5) * 0.18);
-            const size = Math.max(260, width * (0.26 + winterSkyHash(index * 89 + 1) * 0.14));
+            const x = width * (0.08 + winterSkyHash(index * 83 + 5) * 0.84);
+            const size = Math.max(340, width * (0.32 + winterSkyHash(index * 89 + 1) * 0.22));
             ctx.save();
-            ctx.globalAlpha = arrival(worldY) * (0.30 + winterSkyHash(index * 97 + 4) * 0.18);
+            ctx.globalAlpha = arrival(worldY) * (0.42 + winterSkyHash(index * 97 + 4) * 0.22);
             ctx.translate(x, y);
             ctx.rotate((winterSkyHash(index * 101 + 7) - 0.5) * 0.7);
-            ctx.drawImage(winterSkyWisps[index % winterSkyWisps.length], -size / 2, -size / 2, size, size);
+            ctx.drawImage(winterSkyWisps[index % winterSkyWisps.length], -size / 2, -size * 0.35, size, size * 0.70);
             ctx.restore();
         }
     }
@@ -366,20 +372,8 @@ function prepareSeasonWorld(image, tighterFade = false) {
     return canvas;
 }
 function prepareSeasonWisps(image) {
-    return [[0, 150], [664, 340], [0, 950], [664, 1070]].map(([sx, sy]) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 360;
-        const paint = canvas.getContext('2d');
-        paint.drawImage(image, sx, sy, 360, 360, 0, 0, 360, 360);
-        paint.globalCompositeOperation = 'destination-in';
-        const mask = paint.createRadialGradient(180, 180, 35, 180, 180, 180);
-        mask.addColorStop(0, '#fff');
-        mask.addColorStop(0.5, 'rgba(255,255,255,0.7)');
-        mask.addColorStop(1, 'rgba(255,255,255,0)');
-        paint.fillStyle = mask;
-        paint.fillRect(0, 0, 360, 360);
-        return canvas;
-    });
+    return [[0, 150], [664, 340], [0, 950], [664, 1070]]
+        .map(([sx, sy], index) => prepareSkyWisp(image, sx, sy, index + 5));
 }
 function drawSeasonHighSky(theme, pixelsPerWorld) {
     const art = seasonContinuousArt[theme];
@@ -389,21 +383,25 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
     const skyY = (worldY) => height + (backdropCameraY - worldY) * pixelsPerWorld;
     const arrival = (worldY) => chapterEase((worldY - 33000) / 4000);
     const season = baseSeason(theme);
-    const offset = season === 'spring' ? 11 : season === 'summer' ? 47 : season === 'winter' ? 5 : 83;
-    const colors = season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
-        : season === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
-            : ['255,181,107', '235,161,180', '255,217,150'];
-    const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 3200));
-    const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 3200);
+    const offset = THEME_ORDER.indexOf(theme) * 37 + 11;
+    const colors = theme === 'great-yarn-tangle' ? ['255,191,174', '244,166,217', '255,214,158']
+        : theme === 'turtleback-world' ? ['175,234,192', '154,224,239', '237,230,177']
+            : theme === 'cat-lockup-expedition' ? ['255,204,131', '208,195,255', '255,226,185']
+                : theme === 'moonlit-aquarium' ? ['133,231,246', '185,202,255', '222,176,248']
+                    : season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
+                        : season === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
+                            : ['255,181,107', '235,161,180', '255,217,150'];
+    const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 2200));
+    const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 2200);
     for (let index = firstWisp; index <= lastWisp; index++) {
-        const worldY = 34000 + index * 3200 + winterSkyHash(index * 73 + offset) * 600;
-        const x = width * (winterSkyHash(index * 79 + offset) < 0.5 ? 0.18 : 0.82);
-        const size = Math.max(260, width * (0.26 + winterSkyHash(index * 89 + offset) * 0.14));
+        const worldY = 34000 + index * 2200 + (winterSkyHash(index * 73 + offset) - 0.5) * 1300;
+        const x = width * (0.08 + winterSkyHash(index * 79 + offset) * 0.84);
+        const size = Math.max(340, width * (0.32 + winterSkyHash(index * 89 + offset) * 0.22));
         ctx.save();
-        ctx.globalAlpha = arrival(worldY) * (0.27 + winterSkyHash(index * 97 + offset) * 0.15);
+        ctx.globalAlpha = arrival(worldY) * (0.42 + winterSkyHash(index * 97 + offset) * 0.22);
         ctx.translate(x, skyY(worldY));
         ctx.rotate((winterSkyHash(index * 101 + offset) - 0.5) * 0.7);
-        ctx.drawImage(art.wisps[index % art.wisps.length], -size / 2, -size / 2, size, size);
+        ctx.drawImage(art.wisps[index % art.wisps.length], -size / 2, -size * 0.35, size, size * 0.70);
         ctx.restore();
     }
     const first = Math.max(0, Math.floor((backdropCameraY - 34000) / 1450));
@@ -427,7 +425,44 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
         ctx.translate(x, y);
         ctx.rotate(winterSkyHash(index * 41 + offset) * Math.PI);
         ctx.fillStyle = `rgba(${color},0.82)`;
-        if (season === 'summer' || season === 'winter') {
+        if (theme === 'great-yarn-tangle') {
+            ctx.strokeStyle = `rgba(${color},0.72)`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-radius, -radius * 0.2);
+            ctx.bezierCurveTo(-radius * 0.2, -radius * 1.1, radius * 0.1, radius * 0.8, radius, radius * 0.1);
+            ctx.stroke();
+        }
+        else if (theme === 'turtleback-world') {
+            ctx.beginPath();
+            ctx.moveTo(0, -radius);
+            ctx.quadraticCurveTo(radius * 0.7, -radius * 0.2, radius * 0.25, radius * 0.7);
+            ctx.quadraticCurveTo(-radius * 0.6, radius * 0.1, 0, -radius);
+            ctx.fill();
+        }
+        else if (theme === 'cat-lockup-expedition') {
+            ctx.strokeStyle = `rgba(${color},0.78)`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(-radius * 0.4, 0, radius * 0.32, 0, Math.PI * 2);
+            ctx.moveTo(-radius * 0.1, 0);
+            ctx.lineTo(radius * 0.9, 0);
+            ctx.lineTo(radius * 0.9, radius * 0.38);
+            ctx.moveTo(radius * 0.5, 0);
+            ctx.lineTo(radius * 0.5, radius * 0.25);
+            ctx.stroke();
+        }
+        else if (theme === 'moonlit-aquarium') {
+            ctx.strokeStyle = `rgba(${color},0.76)`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(-radius * 0.24, -radius * 0.24, radius * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        else if (season === 'summer' || season === 'winter') {
             ctx.beginPath();
             ctx.arc(0, 0, Math.max(2, radius * 0.18), 0, Math.PI * 2);
             ctx.fill();
@@ -477,13 +512,12 @@ function drawSeasonContinuousWorld(theme) {
     drawPanel(art.preparedWorld, 0);
     drawPanel(art.preparedUpper, 12000);
     // The final painting's feathered top reveals these later motifs gradually.
-    if (!isNewWorld(theme))
-        drawSeasonHighSky(theme, pixelsPerWorld);
+    drawSeasonHighSky(theme, pixelsPerWorld);
     if (isFestival(theme)) {
-        // One taller authored starfield carries each festival through Expedition's
-        // summit. It fades into the later motifs without repeating the painting.
-        const starHeight = imageHeight * (isNewWorld(theme) ? 1.75 : 1.55);
-        const bottom = height + (backdropCameraY - (isNewWorld(theme) ? 25000 : 23000)) * pixelsPerWorld;
+        // Preserve the painting's proportions; high-sky wisps and motifs carry
+        // the climb after it fades, instead of stretching round art into ovals.
+        const starHeight = imageHeight;
+        const bottom = height + (backdropCameraY - 25000) * pixelsPerWorld;
         if (bottom > 0 && bottom - starHeight < height) {
             ctx.drawImage(art.preparedStarfield, x, bottom - starHeight, imageWidth, starHeight);
         }
@@ -1539,7 +1573,7 @@ function initProgressionUi() {
     });
     document.getElementById('open-shop')?.addEventListener('click', () => openProgressDialog('shop-overlay'));
     document.getElementById('open-achievements')?.addEventListener('click', () => openProgressDialog('achievements-overlay'));
-    document.getElementById('settings-button')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
+    document.getElementById('open-settings')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
     document.getElementById('close-shop')?.addEventListener('click', closeProgressDialogs);
     document.getElementById('close-achievements')?.addEventListener('click', closeProgressDialogs);
     document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
@@ -4540,6 +4574,7 @@ function drawFallbackCat(x, y, vx, vy) {
     ctx.restore();
 }
 const kittenFrameCache = new Map();
+const kittenFootBaseline = new WeakMap();
 function cleanKittenFrame(image, frame) {
     const key = `${image.src}:${frame}`;
     const cached = kittenFrameCache.get(key);
@@ -4591,12 +4626,16 @@ function cleanKittenFrame(image, frame) {
             largest = component;
     }
     const keep = new Uint8Array(count);
-    for (const point of largest)
+    let lowestOpaqueRow = 0;
+    for (const point of largest) {
         keep[point] = 1;
+        lowestOpaqueRow = Math.max(lowestOpaqueRow, Math.floor(point / canvas.width));
+    }
     for (let point = 0; point < count; point++)
         if (!keep[point])
             pixels.data[point * 4 + 3] = 0;
     paint.putImageData(pixels, 0, 0);
+    kittenFootBaseline.set(canvas, (lowestOpaqueRow + 1) / canvas.height);
     kittenFrameCache.set(key, canvas);
     return canvas;
 }
@@ -4636,7 +4675,9 @@ function drawKittenFrame(x, y, vx, vy, grounded) {
         frame = grounded ? idleFrame : 11;
     const sprite = cleanKittenFrame(image, frame);
     const paintedSize = 96;
-    const anchor = grounded ? 0.94 : 0.72;
+    // The generated atlas leaves different amounts of transparent space below
+    // each pose. Anchor the visible paws to world ground, not the canvas edge.
+    const top = grounded ? -paintedSize * (kittenFootBaseline.get(sprite) ?? 0.78) + 1 : -paintedSize * 0.72;
     const tilt = grounded ? 0 : Math.max(-0.13, Math.min(0.13, vx / 2500))
         + Math.max(-0.08, Math.min(0.08, -vy / 6500));
     const turnProgress = turnTime / TURN_DURATION;
@@ -4645,7 +4686,7 @@ function drawKittenFrame(x, y, vx, vy, grounded) {
     ctx.translate(x, y);
     ctx.rotate(tilt);
     ctx.scale(facing, 1);
-    ctx.drawImage(sprite, -paintedSize / 2, -paintedSize * anchor, paintedSize, paintedSize);
+    ctx.drawImage(sprite, -paintedSize / 2, top, paintedSize, paintedSize);
     ctx.restore();
 }
 function drawCat(x, y, vx, vy) {
@@ -4701,74 +4742,34 @@ function drawDecimal(value, x, y, maxWidth, font, lineHeight, align = 'left') {
 function drawHUD() {
     ctx.save();
     const visibleWidth = Math.min(width, window.innerWidth);
-    const compact = visibleWidth < 1100;
-    const expedition = selectedMode === 'expedition';
-    const panelX = 18, panelY = 18;
-    const panelW = compact ? Math.max(260, visibleWidth - 36) : Math.min(visibleWidth - 250, expedition ? 850 : 650);
-    const scoreFont = compact ? '700 16px ui-rounded, system-ui, sans-serif' : '700 18px ui-rounded, system-ui, sans-serif';
-    const bestFont = compact ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif';
-    const scoreW = compact ? (panelW - 42) / 2 : expedition ? (panelW - 40) * .28 : (panelW - 40) * .34;
-    const bestW = compact ? scoreW : scoreW;
-    const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length, decimalLines(bestForMode(), bestFont, bestW - 8).length);
-    const panelH = (compact ? expedition ? 121 : 101 : 69) + Math.max(0, lineCount - 1) * 19;
-    ctx.fillStyle = 'rgba(4,18,30,.72)';
-    ctx.beginPath();
-    ctx.roundRect(panelX, panelY, panelW, panelH, 12);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.16)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    const firstX = panelX + 15;
-    const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
+    const compact = visibleWidth < 610;
+    const labelX = 18, valueX = compact ? 79 : 92;
     ctx.textAlign = 'left';
-    ctx.fillStyle = themeMeta().accent;
-    ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`SCORE · ${themeMeta().label.toUpperCase()}`, firstX, panelY + 21, scoreW - 4);
-    ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, secondX, panelY + 21, bestW - 4);
-    ctx.fillStyle = '#f2fbff';
-    drawDecimal(score, firstX, panelY + 47, scoreW - 8, scoreFont, 19);
-    drawDecimal(bestForMode(), secondX, panelY + 47, bestW - 8, bestFont, 19);
-    const statY = panelY + 58 + Math.max(0, lineCount - 1) * 19;
-    if (compact) {
-        ctx.fillStyle = '#eaf7ff';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(2,12,22,.95)';
+    ctx.shadowColor = 'rgba(1,9,18,.88)';
+    ctx.shadowBlur = 6;
+    const hudLine = (label, value, y) => {
+        ctx.font = compact ? '800 12px ui-rounded, system-ui, sans-serif' : '800 14px ui-rounded, system-ui, sans-serif';
+        ctx.strokeText(label, labelX, y);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(label, labelX, y);
+        const rowValueX = Math.max(valueX, labelX + ctx.measureText(label).width + 12);
+        ctx.font = compact ? '800 15px ui-rounded, system-ui, sans-serif' : '800 17px ui-rounded, system-ui, sans-serif';
+        ctx.strokeText(value, rowValueX, y, Math.max(90, visibleWidth - rowValueX - 180));
+        ctx.fillText(value, rowValueX, y, Math.max(90, visibleWidth - rowValueX - 180));
+    };
+    hudLine('SCORE', formatScore(score), 27);
+    hudLine(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? '*' : ''}`, formatScore(bestForMode()), 51);
+    if (selectedMode === 'expedition') {
+        const goals = expeditionGoals();
+        const target = goals[Math.min(2, expeditionStage)];
         ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-        ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 8, panelW - 30);
-        if (expedition) {
-            const goals = expeditionGoals();
-            const target = goals[Math.min(2, expeditionStage)];
-            ctx.fillStyle = themeMeta().accent;
-            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 28, panelW - 30);
-        }
-    }
-    else {
-        const thirdX = secondX + bestW + 12;
-        ctx.fillStyle = themeMeta().accent;
-        ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-        ctx.fillText('BOUNCES / MULTI', thirdX, panelY + 21, 145);
-        ctx.fillStyle = '#f2fbff';
-        ctx.font = '700 17px ui-rounded, system-ui, sans-serif';
-        ctx.fillText(`${bellCount} / x${multiplier}`, thirdX, panelY + 47, 145);
-        if (expedition) {
-            const fourthX = thirdX + 150;
-            const goals = expeditionGoals();
-            const target = goals[Math.min(2, expeditionStage)];
-            const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
-            const fraction = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
-            const trackW = Math.max(50, panelX + panelW - fourthX - 16);
-            ctx.fillStyle = themeMeta().accent;
-            ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${expeditionGoalName()}`, fourthX, panelY + 21, trackW);
-            ctx.fillStyle = '#eaf7ff';
-            ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO · ${expeditionRetries} RETRIES`, fourthX, panelY + 47, trackW);
-            ctx.fillStyle = 'rgba(255,255,255,.20)';
-            ctx.beginPath();
-            ctx.roundRect(fourthX, panelY + 58, trackW, 6, 3);
-            ctx.fill();
-            ctx.fillStyle = themeMeta().accent;
-            ctx.beginPath();
-            ctx.roundRect(fourthX, panelY + 58, Math.max(1, trackW * fraction), 6, 3);
-            ctx.fill();
-        }
+        const progress = `STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`;
+        ctx.strokeText(progress, labelX, 73);
+        ctx.fillText(progress, labelX, 73);
     }
     if (messageTimer > 0) {
         ctx.globalAlpha = Math.min(1, messageTimer * 1.8);
@@ -4780,7 +4781,7 @@ function drawHUD() {
     }
     // The compact shortcut stays readable over every sky; the full guide is in Settings.
     const controlsX = visibleWidth - 18;
-    const controlsY = compact ? panelY + panelH + 25 : 38;
+    const controlsY = 38;
     ctx.textAlign = 'right';
     ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
     ctx.lineWidth = 4;
@@ -5111,6 +5112,7 @@ function drawExpeditionComplete() {
     const scoreEnd = drawDecimal(score, width / 2, y + 121, w - 40, formatScore(score).length > 48 ? '700 16px ui-rounded, system-ui, sans-serif' : '800 27px ui-rounded, system-ui, sans-serif', formatScore(score).length > 48 ? 20 : 31, 'center');
     ctx.font = '600 12px ui-rounded, system-ui, sans-serif';
     ctx.fillText(`${bellCount} objects  ·  x${multiplier} final multiplier  ·  ${expeditionRetries} retries`, width / 2, scoreEnd + 10, w - 28);
+    ctx.fillText(`${formatScore(scoreBase)} base + ${formatScore(scoreMultiplierBonus)} multiplier bonus`, width / 2, scoreEnd + 28, w - 28);
     ctx.fillStyle = themeMeta().accent;
     ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
     ctx.fillText('SPACE / ENTER / CLICK TO TRY AGAIN  ·  L SCORES', width / 2, y + h - 23, w - 24);
@@ -5164,9 +5166,10 @@ function drawGameOver() {
     ctx.fillStyle = 'rgba(225,244,251,.82)';
     ctx.font = '600 13px ui-rounded, system-ui, sans-serif';
     ctx.fillText(`${bellCount} objects  •  ${mothCount} ${meta.airborne.toLowerCase()}${mothCount === 1 ? '' : 's'}  •  multiplier x${multiplier}`, cx, nextY + 3);
-    ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, cx, nextY + 24);
+    ctx.fillText(`${formatScore(scoreBase)} base + ${formatScore(scoreMultiplierBonus)} multiplier bonus`, cx, nextY + 23, width - 48);
+    ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, cx, nextY + 44);
     ctx.fillStyle = '#f4fbff';
-    nextY = drawDecimal(bestForMode(), cx, nextY + 43, width - 64, longScore ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif', longScore ? 16 : 18, 'center');
+    nextY = drawDecimal(bestForMode(), cx, nextY + 63, width - 64, longScore ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif', longScore ? 16 : 18, 'center');
     ctx.font = '700 16px ui-rounded, system-ui, sans-serif';
     ctx.fillStyle = meta.accent;
     ctx.fillText('SPACE / ENTER / CLICK TO RETRY  ·  ESC FOR SEASONS', cx, nextY + 20, width - 40);
@@ -5278,48 +5281,66 @@ function drawScoreboard() {
     ctx.restore();
 }
 const ACHIEVEMENTS = [
-    { id: 'bells', title: 'Bell Ringer', detail: 'Bells struck', targets: [25, 250, 1500] },
-    { id: 'chain', title: 'One Long Song', detail: 'Bells in one launch', targets: [3, 6, 12] },
-    { id: 'score', title: 'Sky Star', detail: 'Best run score', targets: [10000, 100000, 1000000] },
-    { id: 'height', title: 'Cloud Climber', detail: 'Highest altitude', targets: [1000, 14000, 42000] },
+    { id: 'bells', title: 'Bell Ringer', detail: 'Bells struck', targets: [50, 400, 2000] },
+    { id: 'chain', title: 'One Long Song', detail: 'Bells in one launch', targets: [6, 12, 24] },
+    { id: 'score', title: 'Sky Star', detail: 'Best run score', targets: [25000, 250000, 1000000] },
+    { id: 'height', title: 'Cloud Climber', detail: 'Highest altitude', targets: [5000, 20000, 42000] },
     { id: 'airborne', title: 'Airborne Friends', detail: 'Airborne catches', targets: [5, 50, 250] },
-    { id: 'crates', title: 'Curious Paws', detail: 'Mystery crates opened', targets: [1, 10, 50] },
+    { id: 'crates', title: 'Curious Paws', detail: 'Mystery crates opened', targets: [5, 25, 100] },
     { id: 'cats', title: 'Cat Company', detail: 'Different cats played', targets: [2, 3, 4] },
-    { id: 'fish', title: 'Fish Finder', detail: 'Fish earned', targets: [25, 250, 1000] },
-    { id: 'wallet', title: 'Fish Keeper', detail: 'Most fish held', targets: [25, 100, 500] },
-    { id: 'runs', title: 'Nine Lives', detail: 'Runs started', targets: [1, 25, 100] },
-    { id: 'yarn', title: 'Yarn Explorer', detail: 'Yarn Tangle runs', targets: [1, 10, 50] },
-    { id: 'turtle', title: 'Turtleback Traveler', detail: 'Turtleback runs', targets: [1, 10, 50] },
-    { id: 'lockup', title: 'Freedom Finder', detail: 'Cat Lockup runs', targets: [1, 10, 50] },
-    { id: 'aquarium', title: 'Moonlit Diver', detail: 'Aquarium runs', targets: [1, 10, 50] },
-    { id: 'worlds', title: 'World Collector', detail: 'Worlds unlocked with fish', targets: [1, 4, 8] },
-    { id: 'winter', title: 'Snow Walker', detail: 'Winter runs', targets: [1, 10, 50] },
-    { id: 'spring', title: 'Blossom Walker', detail: 'Spring runs', targets: [1, 10, 50] },
-    { id: 'summer', title: 'Sun Walker', detail: 'Summer runs', targets: [1, 10, 50] },
-    { id: 'autumn', title: 'Leaf Walker', detail: 'Autumn runs', targets: [1, 10, 50] },
-    { id: 'launches', title: 'Constellation Trail', detail: 'Launches', targets: [10, 100, 500] },
-    { id: 'gear', title: 'Well Equipped', detail: 'Permanent gear owned', targets: [1, 3, 6] },
-    { id: 'zen', title: 'Soft Landing', detail: 'Safe Zen landings', targets: [1, 25, 100] },
-    { id: 'camps', title: 'Camp Light', detail: 'Expedition camps reached', targets: [1, 10, 50] },
-    { id: 'modes', title: 'Many Paths', detail: 'Different modes played', targets: [1, 2, 3] },
+    { id: 'fish', title: 'Fish Finder', detail: 'Fish earned', targets: [100, 750, 3000] },
+    { id: 'wallet', title: 'Fish Keeper', detail: 'Most fish held', targets: [150, 600, 2000] },
+    { id: 'runs', title: 'Nine Lives', detail: 'Runs started', targets: [10, 50, 200] },
+    { id: 'yarn', title: 'Yarn Explorer', detail: 'Yarn Tangle runs', targets: [5, 25, 100] },
+    { id: 'turtle', title: 'Turtleback Traveler', detail: 'Turtleback runs', targets: [5, 25, 100] },
+    { id: 'lockup', title: 'Freedom Finder', detail: 'Cat Lockup runs', targets: [5, 25, 100] },
+    { id: 'aquarium', title: 'Moonlit Diver', detail: 'Aquarium runs', targets: [5, 25, 100] },
+    { id: 'worlds', title: 'World Collector', detail: 'Worlds unlocked with fish', targets: [3, 6, 8] },
+    { id: 'winter', title: 'Snow Walker', detail: 'Winter runs', targets: [5, 25, 100] },
+    { id: 'spring', title: 'Blossom Walker', detail: 'Spring runs', targets: [5, 25, 100] },
+    { id: 'summer', title: 'Sun Walker', detail: 'Summer runs', targets: [5, 25, 100] },
+    { id: 'autumn', title: 'Leaf Walker', detail: 'Autumn runs', targets: [5, 25, 100] },
+    { id: 'launches', title: 'Constellation Trail', detail: 'Launches', targets: [20, 150, 750] },
+    { id: 'gear', title: 'Well Equipped', detail: 'Permanent gear owned', targets: [3, 5, 6] },
+    { id: 'zen', title: 'Soft Landing', detail: 'Safe Zen landings', targets: [10, 50, 200] },
+    { id: 'camps', title: 'Camp Light', detail: 'Expedition camps reached', targets: [5, 25, 100] },
+    { id: 'modes', title: 'Many Paths', detail: 'Different world/mode routes played', targets: [4, 12, 24] },
     { id: 'summits', title: 'Summit Crown', detail: 'Expeditions finished', targets: [1, 5, 25] },
 ];
 const ACHIEVEMENT_KEY = 'cats-changing-sky-achievements-v1';
+// Preserve tiers earned under the first beta's easier targets when upgrading a save.
+const LEGACY_TARGETS = {
+    bells: [25, 250, 1500], chain: [3, 6, 12], score: [10000, 100000, 1000000],
+    height: [1000, 14000, 42000], crates: [1, 10, 50], fish: [25, 250, 1000],
+    wallet: [25, 100, 500], runs: [1, 25, 100],
+    yarn: [1, 10, 50], turtle: [1, 10, 50], lockup: [1, 10, 50], aquarium: [1, 10, 50],
+    worlds: [1, 4, 8], winter: [1, 10, 50], spring: [1, 10, 50],
+    summer: [1, 10, 50], autumn: [1, 10, 50], launches: [10, 100, 500],
+    gear: [1, 3, 6], zen: [1, 25, 100], camps: [1, 10, 50], modes: [1, 2, 3],
+};
 function loadAchievements() {
     try {
         const raw = JSON.parse(localStorage.getItem(ACHIEVEMENT_KEY) || 'null');
-        if (!raw || raw.version !== 1 || typeof raw.values !== 'object' || raw.values === null)
+        if (!raw || (raw.version !== 1 && raw.version !== 2) || typeof raw.values !== 'object' || raw.values === null)
             throw Error('No achievement save');
         const values = {};
+        const earnedTiers = {};
         for (const def of ACHIEVEMENTS) {
             const value = raw.values[def.id];
-            values[def.id] = Number.isSafeInteger(value) && value >= 0 ? value : 0;
+            const savedValue = Number.isSafeInteger(value) && value >= 0 ? value : 0;
+            values[def.id] = raw.version === 1 && def.id === 'modes' ? 0 : savedValue;
+            const oldTargets = raw.version === 1 ? LEGACY_TARGETS[def.id] || def.targets : def.targets;
+            const savedTier = raw.version === 2 && Number.isInteger(raw.earnedTiers?.[def.id])
+                ? Math.max(0, Math.min(3, raw.earnedTiers[def.id])) : 0;
+            earnedTiers[def.id] = Math.max(savedTier, achievementTier({ ...def, targets: oldTargets }, savedValue));
         }
-        return { version: 1, values, seenCats: Array.isArray(raw.seenCats) ? raw.seenCats.filter((id) => typeof id === 'string') : [],
-            seenModes: Array.isArray(raw.seenModes) ? raw.seenModes.filter((id) => typeof id === 'string') : [] };
+        return { version: 2, values, earnedTiers,
+            seenCats: Array.isArray(raw.seenCats) ? raw.seenCats.filter((id) => typeof id === 'string') : [],
+            seenModes: raw.version === 2 && Array.isArray(raw.seenModes)
+                ? raw.seenModes.filter((id) => typeof id === 'string' && id.includes(':')) : [] };
     }
     catch {
-        return { version: 1, values: {}, seenCats: [], seenModes: [] };
+        return { version: 2, values: {}, earnedTiers: {}, seenCats: [], seenModes: [] };
     }
 }
 const achievements = loadAchievements();
@@ -5372,13 +5393,15 @@ function observeAchievement(id, value) {
     if (next === previous)
         return;
     achievements.values[id] = next;
+    const oldTier = Math.max(achievements.earnedTiers[id] || 0, achievementTier(def, previous));
+    const newTier = Math.max(oldTier, achievementTier(def, next));
+    achievements.earnedTiers[id] = newTier;
     try {
         localStorage.setItem(ACHIEVEMENT_KEY, JSON.stringify(achievements));
     }
     catch (error) {
         console.warn('Achievements could not be saved.', error);
     }
-    const oldTier = achievementTier(def, previous), newTier = achievementTier(def, next);
     for (let tier = oldTier + 1; tier <= newTier; tier++)
         achievementQueue.push({ title: def.title, tier: tier, index });
     if (!achievementShowing)
@@ -5403,7 +5426,7 @@ function renderAchievements() {
     list.replaceChildren();
     ACHIEVEMENTS.forEach((def, index) => {
         const value = achievements.values[def.id] || 0;
-        const tier = achievementTier(def, value);
+        const tier = Math.max(achievements.earnedTiers[def.id] || 0, achievementTier(def, value));
         const card = document.createElement('article');
         card.className = 'achievement-card';
         card.dataset.tier = TIER_NAMES[tier].toLowerCase();
@@ -5767,9 +5790,9 @@ const SCENE_LAYOUT = {
 };
 for (const theme of NEW_WORLD_ORDER)
     SCENE_LAYOUT[theme] = SCENE_LAYOUT[baseSeason(theme)];
-SCENE_LAYOUT['great-yarn-tangle'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.14 };
-SCENE_LAYOUT['turtleback-world'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.025 };
-SCENE_LAYOUT['cat-lockup-expedition'] = { ...SCENE_LAYOUT.autumn, groundSurface: 0.11 };
+SCENE_LAYOUT['great-yarn-tangle'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.155 };
+SCENE_LAYOUT['turtleback-world'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.055 };
+SCENE_LAYOUT['cat-lockup-expedition'] = { ...SCENE_LAYOUT.autumn, groundSurface: 0.31 };
 SCENE_LAYOUT['moonlit-aquarium'] = { ...SCENE_LAYOUT.winter, groundSurface: 0.37 };
 const sceneAssets = {};
 const sceneAssetState = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle']));
@@ -5994,6 +6017,8 @@ let cameraY = 0;
 // bell arc does not make a mountain travel back toward its previous chapter.
 let backdropCameraY = 0;
 let score = 0n;
+let scoreBase = 0n;
+let scoreMultiplierBonus = 0n;
 let bellCount = 0;
 let mothCount = 0;
 let highestY = 0;
@@ -6303,8 +6328,10 @@ if (menuOverlay) {
         const thumb = document.createElement('span');
         thumb.className = 'world-thumb';
         const image = document.createElement('img');
-        image.src = theme === 'winter' ? 'assets/themes/winter/winter-continuous-world-v1.png' : isFestival(theme)
-            ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+        image.src = theme === 'great-yarn-tangle' || theme === 'turtleback-world'
+            ? `assets/themes/${theme}/world-v2.webp`
+            : theme === 'winter' ? 'assets/themes/winter/winter-continuous-world-v1.png' : isFestival(theme)
+                ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
         image.alt = '';
         image.loading = 'lazy';
         const price = document.createElement('span');
@@ -6388,7 +6415,10 @@ function bestIsApproximate(mode = selectedMode) {
 function formatScore(value) { return value.toLocaleString('en-US'); }
 function tierPoints(kind) { return kind === 'crystal' ? 30 : kind === 'silver' ? 20 : 10; }
 function awardPoints(base) {
-    score += BigInt(base) * BigInt(multiplier);
+    const basePoints = BigInt(base);
+    scoreBase += basePoints;
+    scoreMultiplierBonus += basePoints * BigInt(multiplier - 1);
+    score = scoreBase + scoreMultiplierBonus;
     observeAchievement('score', Number(score > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : score));
 }
 const cat = {
@@ -6541,6 +6571,8 @@ function returnToTitle() {
     backdropCameraY = 0;
     descentBlend = 0;
     score = 0n;
+    scoreBase = 0n;
+    scoreMultiplierBonus = 0n;
     bellCount = 0;
     mothCount = 0;
     multiplier = 1;
@@ -6633,6 +6665,8 @@ function rebuildBackdrop() {
 function setReadyState() {
     state = 'ready';
     score = 0n;
+    scoreBase = 0n;
+    scoreMultiplierBonus = 0n;
     bellCount = 0;
     mothCount = 0;
     multiplier = 1;
@@ -6699,7 +6733,7 @@ function launchRun() {
         if (worldTrack[selectedTheme])
             incrementAchievement(worldTrack[selectedTheme]);
         noteAchievementChoice('cats', selectedCharacter);
-        noteAchievementChoice('modes', selectedMode);
+        noteAchievementChoice('modes', `${selectedTheme}:${selectedMode}`);
     }
     beginLaunchProgress();
     state = 'playing';

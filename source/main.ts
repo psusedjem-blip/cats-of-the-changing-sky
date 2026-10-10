@@ -355,9 +355,9 @@ const SCENE_LAYOUT: Record<ThemeName, { far: [number, number]; mid: [number, num
   'moonlit-masquerade': { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
 } as Record<ThemeName, { far: [number, number]; mid: [number, number]; near: [number, number]; groundSurface: number }>;
 for (const theme of NEW_WORLD_ORDER) SCENE_LAYOUT[theme] = SCENE_LAYOUT[baseSeason(theme)];
-SCENE_LAYOUT['great-yarn-tangle'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.14 };
-SCENE_LAYOUT['turtleback-world'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.025 };
-SCENE_LAYOUT['cat-lockup-expedition'] = { ...SCENE_LAYOUT.autumn, groundSurface: 0.11 };
+SCENE_LAYOUT['great-yarn-tangle'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.155 };
+SCENE_LAYOUT['turtleback-world'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.055 };
+SCENE_LAYOUT['cat-lockup-expedition'] = { ...SCENE_LAYOUT.autumn, groundSurface: 0.31 };
 SCENE_LAYOUT['moonlit-aquarium'] = { ...SCENE_LAYOUT.winter, groundSurface: 0.37 };
 const sceneAssets: Partial<Record<ThemeName, SceneAssets>> = {};
 const sceneAssetState: Record<ThemeName, AssetState> = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle'])) as Record<ThemeName, AssetState>;
@@ -588,6 +588,8 @@ let cameraY = 0;
 // bell arc does not make a mountain travel back toward its previous chapter.
 let backdropCameraY = 0;
 let score = 0n;
+let scoreBase = 0n;
+let scoreMultiplierBonus = 0n;
 let bellCount = 0;
 let mothCount = 0;
 let highestY = 0;
@@ -870,7 +872,9 @@ if (menuOverlay) {
     button.setAttribute('aria-pressed', String(theme === selectedTheme));
     const thumb = document.createElement('span'); thumb.className = 'world-thumb';
     const image = document.createElement('img');
-    image.src = theme === 'winter' ? 'assets/themes/winter/winter-continuous-world-v1.png' : isFestival(theme)
+    image.src = theme === 'great-yarn-tangle' || theme === 'turtleback-world'
+      ? `assets/themes/${theme}/world-v2.webp`
+      : theme === 'winter' ? 'assets/themes/winter/winter-continuous-world-v1.png' : isFestival(theme)
       ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
     image.alt = ''; image.loading = 'lazy';
     const price = document.createElement('span'); price.className = 'world-price';
@@ -950,7 +954,10 @@ function formatScore(value: bigint): string { return value.toLocaleString('en-US
 function tierPoints(kind: BellKind): number { return kind === 'crystal' ? 30 : kind === 'silver' ? 20 : 10; }
 
 function awardPoints(base: number): void {
-  score += BigInt(base) * BigInt(multiplier);
+  const basePoints = BigInt(base);
+  scoreBase += basePoints;
+  scoreMultiplierBonus += basePoints * BigInt(multiplier - 1);
+  score = scoreBase + scoreMultiplierBonus;
   observeAchievement('score', Number(score > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : score));
 }
 
@@ -1097,6 +1104,8 @@ function returnToTitle(): void {
   backdropCameraY = 0;
   descentBlend = 0;
   score = 0n;
+  scoreBase = 0n;
+  scoreMultiplierBonus = 0n;
   bellCount = 0;
   mothCount = 0;
   multiplier = 1;
@@ -1191,6 +1200,8 @@ function rebuildBackdrop(): void {
 function setReadyState(): void {
   state = 'ready';
   score = 0n;
+  scoreBase = 0n;
+  scoreMultiplierBonus = 0n;
   bellCount = 0;
   mothCount = 0;
   multiplier = 1;
@@ -1257,7 +1268,7 @@ function launchRun(): void {
     };
     if (worldTrack[selectedTheme]) incrementAchievement(worldTrack[selectedTheme]!);
     noteAchievementChoice('cats', selectedCharacter);
-    noteAchievementChoice('modes', selectedMode);
+    noteAchievementChoice('modes', `${selectedTheme}:${selectedMode}`);
   }
   beginLaunchProgress();
   state = 'playing';

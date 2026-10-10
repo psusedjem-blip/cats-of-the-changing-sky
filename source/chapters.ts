@@ -108,8 +108,8 @@ const SEASON_SKY_COLOR: Record<ThemeName, string> = {
   winter: '#081e40', spring: '#3446a6', summer: '#76b7f5', autumn: '#231838',
   'starlight-eve': '#111b40', 'great-egg-hunt': '#8495c9',
   'fireworks-fair': '#142652', 'moonlit-masquerade': '#20152d',
-  'great-yarn-tangle': '#dbb1aa', 'turtleback-world': '#a6c7bc',
-  'cat-lockup-expedition': '#536889', 'moonlit-aquarium': '#144667',
+  'great-yarn-tangle': '#3a2e68', 'turtleback-world': '#0e2567',
+  'cat-lockup-expedition': '#273a7c', 'moonlit-aquarium': '#172455',
 };
 const seasonContinuousArt = {} as Record<Exclude<ThemeName, 'winter'>, SeasonContinuousArt>;
 for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade', 'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium'] as Exclude<ThemeName, 'winter'>[]) {
@@ -133,7 +133,9 @@ function loadContinuousSeason(theme: ThemeName): void {
   const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
     : seasonContinuousArt[theme];
   const { world, upper, starfield } = art;
-  art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+  art.world.src = theme === 'great-yarn-tangle' || theme === 'turtleback-world'
+    ? `assets/themes/${theme}/world-v2.webp`
+    : isFestival(theme) ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
   art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
   art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
   void Promise.all([world, upper, starfield].map(image => image.decode())).then(() => {
@@ -249,23 +251,28 @@ function winterSkyHash(value: number): number {
   return (n >>> 0) / 0x100000000;
 }
 
+function prepareSkyWisp(image: HTMLImageElement, sx: number, sy: number, seed: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 360;
+  const paint = canvas.getContext('2d')!;
+  paint.drawImage(image, sx, sy, 360, 360, 0, 0, 360, 360);
+  const pixels = paint.getImageData(0, 0, 360, 360);
+  for (let y = 0; y < 360; y++) for (let x = 0; x < 360; x++) {
+    const dx = (x - 180) / 180, dy = (y - 180) / 180;
+    const angle = Math.atan2(dy, dx);
+    const edge = 0.70 + 0.10 * Math.sin(angle * 3 + seed) + 0.08 * Math.sin(angle * 5 - seed * 1.7)
+      + 0.05 * Math.sin(angle * 9 + seed * 0.6);
+    const distance = Math.hypot(dx * 0.82, dy * 1.12);
+    const feather = Math.max(0, Math.min(1, (edge - distance) / 0.38));
+    pixels.data[(y * 360 + x) * 4 + 3] *= feather * feather * (3 - 2 * feather);
+  }
+  paint.putImageData(pixels, 0, 0);
+  return canvas;
+}
+
 function prepareWinterSkyWisps(): HTMLCanvasElement[] {
   const crops = [[0, 160], [660, 360], [0, 960], [660, 1030]];
-  return crops.map(([sourceX, sourceY]) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 360;
-    canvas.height = 360;
-    const paint = canvas.getContext('2d')!;
-    paint.drawImage(winterStarfield, sourceX, sourceY, 360, 360, 0, 0, 360, 360);
-    paint.globalCompositeOperation = 'destination-in';
-    const mask = paint.createRadialGradient(180, 180, 40, 180, 180, 180);
-    mask.addColorStop(0, '#fff');
-    mask.addColorStop(0.55, 'rgba(255,255,255,0.7)');
-    mask.addColorStop(1, 'rgba(255,255,255,0)');
-    paint.fillStyle = mask;
-    paint.fillRect(0, 0, 360, 360);
-    return canvas;
-  });
+  return crops.map(([sourceX, sourceY], index) => prepareSkyWisp(winterStarfield, sourceX, sourceY, index + 1));
 }
 
 function drawWinterHighSky(pixelsPerWorld: number): void {
@@ -278,19 +285,18 @@ function drawWinterHighSky(pixelsPerWorld: number): void {
   const arrival = (worldY: number): number => chapterEase((worldY - 33000) / 4000);
   if (winterStarfield.complete && winterStarfield.naturalWidth > 0) {
     if (!winterSkyWisps) winterSkyWisps = prepareWinterSkyWisps();
-    const wispFirst = Math.max(0, Math.floor((backdropCameraY - 34000 - 3000) / 3200));
-    const wispLast = Math.floor((backdropCameraY + visibleWorldSpan + 3000 - 34000) / 3200);
+    const wispFirst = Math.max(0, Math.floor((backdropCameraY - 34000 - 3000) / 2200));
+    const wispLast = Math.floor((backdropCameraY + visibleWorldSpan + 3000 - 34000) / 2200);
     for (let index = wispFirst; index <= wispLast; index++) {
-      const worldY = 34000 + index * 3200 + winterSkyHash(index * 73 + 3) * 600;
+      const worldY = 34000 + index * 2200 + (winterSkyHash(index * 73 + 3) - 0.5) * 1300;
       const y = skyY(worldY);
-      const side = winterSkyHash(index * 79 + 9) < 0.5 ? 0.18 : 0.82;
-      const x = width * (side + (winterSkyHash(index * 83 + 5) - 0.5) * 0.18);
-      const size = Math.max(260, width * (0.26 + winterSkyHash(index * 89 + 1) * 0.14));
+      const x = width * (0.08 + winterSkyHash(index * 83 + 5) * 0.84);
+      const size = Math.max(340, width * (0.32 + winterSkyHash(index * 89 + 1) * 0.22));
       ctx.save();
-      ctx.globalAlpha = arrival(worldY) * (0.30 + winterSkyHash(index * 97 + 4) * 0.18);
+      ctx.globalAlpha = arrival(worldY) * (0.42 + winterSkyHash(index * 97 + 4) * 0.22);
       ctx.translate(x, y);
       ctx.rotate((winterSkyHash(index * 101 + 7) - 0.5) * 0.7);
-      ctx.drawImage(winterSkyWisps[index % winterSkyWisps.length], -size / 2, -size / 2, size, size);
+      ctx.drawImage(winterSkyWisps[index % winterSkyWisps.length], -size / 2, -size * 0.35, size, size * 0.70);
       ctx.restore();
     }
   }
@@ -372,20 +378,8 @@ function prepareSeasonWorld(image: HTMLImageElement, tighterFade = false): HTMLC
 }
 
 function prepareSeasonWisps(image: HTMLImageElement): HTMLCanvasElement[] {
-  return [[0, 150], [664, 340], [0, 950], [664, 1070]].map(([sx, sy]) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 360;
-    const paint = canvas.getContext('2d')!;
-    paint.drawImage(image, sx, sy, 360, 360, 0, 0, 360, 360);
-    paint.globalCompositeOperation = 'destination-in';
-    const mask = paint.createRadialGradient(180, 180, 35, 180, 180, 180);
-    mask.addColorStop(0, '#fff');
-    mask.addColorStop(0.5, 'rgba(255,255,255,0.7)');
-    mask.addColorStop(1, 'rgba(255,255,255,0)');
-    paint.fillStyle = mask;
-    paint.fillRect(0, 0, 360, 360);
-    return canvas;
-  });
+  return [[0, 150], [664, 340], [0, 950], [664, 1070]]
+    .map(([sx, sy], index) => prepareSkyWisp(image, sx, sy, index + 5));
 }
 
 function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: number): void {
@@ -395,21 +389,25 @@ function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: 
   const skyY = (worldY: number): number => height + (backdropCameraY - worldY) * pixelsPerWorld;
   const arrival = (worldY: number): number => chapterEase((worldY - 33000) / 4000);
   const season = baseSeason(theme);
-  const offset = season === 'spring' ? 11 : season === 'summer' ? 47 : season === 'winter' ? 5 : 83;
-  const colors = season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
+  const offset = THEME_ORDER.indexOf(theme) * 37 + 11;
+  const colors = theme === 'great-yarn-tangle' ? ['255,191,174', '244,166,217', '255,214,158']
+    : theme === 'turtleback-world' ? ['175,234,192', '154,224,239', '237,230,177']
+    : theme === 'cat-lockup-expedition' ? ['255,204,131', '208,195,255', '255,226,185']
+    : theme === 'moonlit-aquarium' ? ['133,231,246', '185,202,255', '222,176,248']
+    : season === 'spring' ? ['255,203,237', '192,225,255', '211,198,255']
     : season === 'summer' ? ['255,240,177', '211,236,255', '255,223,139']
     : ['255,181,107', '235,161,180', '255,217,150'];
-  const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 3200));
-  const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 3200);
+  const firstWisp = Math.max(0, Math.floor((backdropCameraY - 37000) / 2200));
+  const lastWisp = Math.floor((backdropCameraY + visibleWorldSpan - 31000) / 2200);
   for (let index = firstWisp; index <= lastWisp; index++) {
-    const worldY = 34000 + index * 3200 + winterSkyHash(index * 73 + offset) * 600;
-    const x = width * (winterSkyHash(index * 79 + offset) < 0.5 ? 0.18 : 0.82);
-    const size = Math.max(260, width * (0.26 + winterSkyHash(index * 89 + offset) * 0.14));
+    const worldY = 34000 + index * 2200 + (winterSkyHash(index * 73 + offset) - 0.5) * 1300;
+    const x = width * (0.08 + winterSkyHash(index * 79 + offset) * 0.84);
+    const size = Math.max(340, width * (0.32 + winterSkyHash(index * 89 + offset) * 0.22));
     ctx.save();
-    ctx.globalAlpha = arrival(worldY) * (0.27 + winterSkyHash(index * 97 + offset) * 0.15);
+    ctx.globalAlpha = arrival(worldY) * (0.42 + winterSkyHash(index * 97 + offset) * 0.22);
     ctx.translate(x, skyY(worldY));
     ctx.rotate((winterSkyHash(index * 101 + offset) - 0.5) * 0.7);
-    ctx.drawImage(art.wisps[index % art.wisps.length], -size / 2, -size / 2, size, size);
+    ctx.drawImage(art.wisps[index % art.wisps.length], -size / 2, -size * 0.35, size, size * 0.70);
     ctx.restore();
   }
   const first = Math.max(0, Math.floor((backdropCameraY - 34000) / 1450));
@@ -432,7 +430,33 @@ function drawSeasonHighSky(theme: Exclude<ThemeName, 'winter'>, pixelsPerWorld: 
     ctx.translate(x, y);
     ctx.rotate(winterSkyHash(index * 41 + offset) * Math.PI);
     ctx.fillStyle = `rgba(${color},0.82)`;
-    if (season === 'summer' || season === 'winter') {
+    if (theme === 'great-yarn-tangle') {
+      ctx.strokeStyle = `rgba(${color},0.72)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-radius, -radius * 0.2);
+      ctx.bezierCurveTo(-radius * 0.2, -radius * 1.1, radius * 0.1, radius * 0.8, radius, radius * 0.1);
+      ctx.stroke();
+    } else if (theme === 'turtleback-world') {
+      ctx.beginPath();
+      ctx.moveTo(0, -radius);
+      ctx.quadraticCurveTo(radius * 0.7, -radius * 0.2, radius * 0.25, radius * 0.7);
+      ctx.quadraticCurveTo(-radius * 0.6, radius * 0.1, 0, -radius);
+      ctx.fill();
+    } else if (theme === 'cat-lockup-expedition') {
+      ctx.strokeStyle = `rgba(${color},0.78)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(-radius * 0.4, 0, radius * 0.32, 0, Math.PI * 2);
+      ctx.moveTo(-radius * 0.1, 0); ctx.lineTo(radius * 0.9, 0);
+      ctx.lineTo(radius * 0.9, radius * 0.38);
+      ctx.moveTo(radius * 0.5, 0); ctx.lineTo(radius * 0.5, radius * 0.25);
+      ctx.stroke();
+    } else if (theme === 'moonlit-aquarium') {
+      ctx.strokeStyle = `rgba(${color},0.76)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-radius * 0.24, -radius * 0.24, radius * 0.12, 0, Math.PI * 2); ctx.fill();
+    } else if (season === 'summer' || season === 'winter') {
       ctx.beginPath(); ctx.arc(0, 0, Math.max(2, radius * 0.18), 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = `rgba(${color},0.65)`;
       for (let ray = 0; ray < 6; ray++) {
@@ -475,12 +499,12 @@ function drawSeasonContinuousWorld(theme: Exclude<ThemeName, 'winter'>): void {
   drawPanel(art.preparedWorld, 0);
   drawPanel(art.preparedUpper, 12000);
   // The final painting's feathered top reveals these later motifs gradually.
-  if (!isNewWorld(theme)) drawSeasonHighSky(theme, pixelsPerWorld);
+  drawSeasonHighSky(theme, pixelsPerWorld);
   if (isFestival(theme)) {
-    // One taller authored starfield carries each festival through Expedition's
-    // summit. It fades into the later motifs without repeating the painting.
-    const starHeight = imageHeight * (isNewWorld(theme) ? 1.75 : 1.55);
-    const bottom = height + (backdropCameraY - (isNewWorld(theme) ? 25000 : 23000)) * pixelsPerWorld;
+    // Preserve the painting's proportions; high-sky wisps and motifs carry
+    // the climb after it fades, instead of stretching round art into ovals.
+    const starHeight = imageHeight;
+    const bottom = height + (backdropCameraY - 25000) * pixelsPerWorld;
     if (bottom > 0 && bottom - starHeight < height) {
       ctx.drawImage(art.preparedStarfield, x, bottom - starHeight, imageWidth, starHeight);
     }

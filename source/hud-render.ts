@@ -26,66 +26,34 @@ function drawDecimal(value: bigint, x: number, y: number, maxWidth: number,
 function drawHUD(): void {
   ctx.save();
   const visibleWidth = Math.min(width, window.innerWidth);
-  const compact = visibleWidth < 1100;
-  const expedition = selectedMode === 'expedition';
-  const panelX = 18, panelY = 18;
-  const panelW = compact ? Math.max(260, visibleWidth - 36) : Math.min(visibleWidth - 250, expedition ? 850 : 650);
-  const scoreFont = compact ? '700 16px ui-rounded, system-ui, sans-serif' : '700 18px ui-rounded, system-ui, sans-serif';
-  const bestFont = compact ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif';
-  const scoreW = compact ? (panelW - 42) / 2 : expedition ? (panelW - 40) * .28 : (panelW - 40) * .34;
-  const bestW = compact ? scoreW : scoreW;
-  const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length,
-    decimalLines(bestForMode(), bestFont, bestW - 8).length);
-  const panelH = (compact ? expedition ? 121 : 101 : 69) + Math.max(0, lineCount - 1) * 19;
-  ctx.fillStyle = 'rgba(4,18,30,.72)';
-  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 12); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.stroke();
-  const firstX = panelX + 15;
-  const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
+  const compact = visibleWidth < 610;
+  const labelX = 18, valueX = compact ? 79 : 92;
   ctx.textAlign = 'left';
-  ctx.fillStyle = themeMeta().accent;
-  ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-  ctx.fillText(`SCORE · ${themeMeta().label.toUpperCase()}`, firstX, panelY + 21, scoreW - 4);
-  ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, secondX, panelY + 21, bestW - 4);
-  ctx.fillStyle = '#f2fbff';
-  drawDecimal(score, firstX, panelY + 47, scoreW - 8, scoreFont, 19);
-  drawDecimal(bestForMode(), secondX, panelY + 47, bestW - 8, bestFont, 19);
-  const statY = panelY + 58 + Math.max(0, lineCount - 1) * 19;
-  if (compact) {
-    ctx.fillStyle = '#eaf7ff';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(2,12,22,.95)';
+  ctx.shadowColor = 'rgba(1,9,18,.88)';
+  ctx.shadowBlur = 6;
+  const hudLine = (label: string, value: string, y: number): void => {
+    ctx.font = compact ? '800 12px ui-rounded, system-ui, sans-serif' : '800 14px ui-rounded, system-ui, sans-serif';
+    ctx.strokeText(label, labelX, y);
+    ctx.fillStyle = '#fff'; ctx.fillText(label, labelX, y);
+    const rowValueX = Math.max(valueX, labelX + ctx.measureText(label).width + 12);
+    ctx.font = compact ? '800 15px ui-rounded, system-ui, sans-serif' : '800 17px ui-rounded, system-ui, sans-serif';
+    ctx.strokeText(value, rowValueX, y, Math.max(90, visibleWidth - rowValueX - 180));
+    ctx.fillText(value, rowValueX, y, Math.max(90, visibleWidth - rowValueX - 180));
+  };
+  hudLine('SCORE', formatScore(score), 27);
+  hudLine(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? '*' : ''}`,
+    formatScore(bestForMode()), 51);
+  if (selectedMode === 'expedition') {
+    const goals = expeditionGoals();
+    const target = goals[Math.min(2, expeditionStage)];
     ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 8, panelW - 30);
-    if (expedition) {
-      const goals = expeditionGoals();
-      const target = goals[Math.min(2, expeditionStage)];
-      ctx.fillStyle = themeMeta().accent;
-      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 28, panelW - 30);
-    }
-  } else {
-    const thirdX = secondX + bestW + 12;
-    ctx.fillStyle = themeMeta().accent;
-    ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText('BOUNCES / MULTI', thirdX, panelY + 21, 145);
-    ctx.fillStyle = '#f2fbff';
-    ctx.font = '700 17px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`${bellCount} / x${multiplier}`, thirdX, panelY + 47, 145);
-    if (expedition) {
-      const fourthX = thirdX + 150;
-      const goals = expeditionGoals();
-      const target = goals[Math.min(2, expeditionStage)];
-      const from = expeditionStage === 0 ? 0 : goals[expeditionStage - 1];
-      const fraction = Math.max(0, Math.min(1, (highestY - from) / (target - from)));
-      const trackW = Math.max(50, panelX + panelW - fourthX - 16);
-      ctx.fillStyle = themeMeta().accent;
-      ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${expeditionGoalName()}`, fourthX, panelY + 21, trackW);
-      ctx.fillStyle = '#eaf7ff';
-      ctx.fillText(`${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO · ${expeditionRetries} RETRIES`, fourthX, panelY + 47, trackW);
-      ctx.fillStyle = 'rgba(255,255,255,.20)';
-      ctx.beginPath(); ctx.roundRect(fourthX, panelY + 58, trackW, 6, 3); ctx.fill();
-      ctx.fillStyle = themeMeta().accent;
-      ctx.beginPath(); ctx.roundRect(fourthX, panelY + 58, Math.max(1, trackW * fraction), 6, 3); ctx.fill();
-    }
+    const progress = `STAGE ${Math.min(3, expeditionStage + 1)}/3 · ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`;
+    ctx.strokeText(progress, labelX, 73);
+    ctx.fillText(progress, labelX, 73);
   }
   if (messageTimer > 0) {
     ctx.globalAlpha = Math.min(1, messageTimer * 1.8);
@@ -97,7 +65,7 @@ function drawHUD(): void {
   }
   // The compact shortcut stays readable over every sky; the full guide is in Settings.
   const controlsX = visibleWidth - 18;
-  const controlsY = compact ? panelY + panelH + 25 : 38;
+  const controlsY = 38;
   ctx.textAlign = 'right';
   ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
   ctx.lineWidth = 4; ctx.lineJoin = 'round';
@@ -330,6 +298,7 @@ function drawExpeditionComplete(): void {
     formatScore(score).length > 48 ? 20 : 31, 'center');
   ctx.font = '600 12px ui-rounded, system-ui, sans-serif';
   ctx.fillText(`${bellCount} objects  ·  x${multiplier} final multiplier  ·  ${expeditionRetries} retries`, width / 2, scoreEnd + 10, w - 28);
+  ctx.fillText(`${formatScore(scoreBase)} base + ${formatScore(scoreMultiplierBonus)} multiplier bonus`, width / 2, scoreEnd + 28, w - 28);
   ctx.fillStyle = themeMeta().accent;
   ctx.font = '700 13px ui-rounded, system-ui, sans-serif';
   ctx.fillText('SPACE / ENTER / CLICK TO TRY AGAIN  ·  L SCORES', width / 2, y + h - 23, w - 24);
@@ -381,9 +350,10 @@ function drawGameOver(): void {
   ctx.fillStyle = 'rgba(225,244,251,.82)';
   ctx.font = '600 13px ui-rounded, system-ui, sans-serif';
   ctx.fillText(`${bellCount} objects  •  ${mothCount} ${meta.airborne.toLowerCase()}${mothCount === 1 ? '' : 's'}  •  multiplier x${multiplier}`, cx, nextY + 3);
-  ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, cx, nextY + 24);
+  ctx.fillText(`${formatScore(scoreBase)} base + ${formatScore(scoreMultiplierBonus)} multiplier bonus`, cx, nextY + 23, width - 48);
+  ctx.fillText(`${selectedMode.toUpperCase()} BEST${bestIsApproximate() ? ' · APPROX.' : ''}`, cx, nextY + 44);
   ctx.fillStyle = '#f4fbff';
-  nextY = drawDecimal(bestForMode(), cx, nextY + 43, width - 64,
+  nextY = drawDecimal(bestForMode(), cx, nextY + 63, width - 64,
     longScore ? '600 13px ui-rounded, system-ui, sans-serif' : '600 15px ui-rounded, system-ui, sans-serif',
     longScore ? 16 : 18, 'center');
   ctx.font = '700 16px ui-rounded, system-ui, sans-serif';

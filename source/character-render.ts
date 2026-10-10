@@ -350,6 +350,7 @@ function drawFallbackCat(x: number, y: number, vx: number, vy: number): void {
 }
 
 const kittenFrameCache = new Map<string, HTMLCanvasElement>();
+const kittenFootBaseline = new WeakMap<HTMLCanvasElement, number>();
 function cleanKittenFrame(image: HTMLImageElement, frame: number): HTMLCanvasElement {
   const key = `${image.src}:${frame}`;
   const cached = kittenFrameCache.get(key);
@@ -392,9 +393,14 @@ function cleanKittenFrame(image: HTMLImageElement, frame: number): HTMLCanvasEle
     if (component.length > largest.length) largest = component;
   }
   const keep = new Uint8Array(count);
-  for (const point of largest) keep[point] = 1;
+  let lowestOpaqueRow = 0;
+  for (const point of largest) {
+    keep[point] = 1;
+    lowestOpaqueRow = Math.max(lowestOpaqueRow, Math.floor(point / canvas.width));
+  }
   for (let point = 0; point < count; point++) if (!keep[point]) pixels.data[point * 4 + 3] = 0;
   paint.putImageData(pixels, 0, 0);
+  kittenFootBaseline.set(canvas, (lowestOpaqueRow + 1) / canvas.height);
   kittenFrameCache.set(key, canvas);
   return canvas;
 }
@@ -421,7 +427,9 @@ function drawKittenFrame(x: number, y: number, vx: number, vy: number, grounded:
   else frame = grounded ? idleFrame : 11;
   const sprite = cleanKittenFrame(image, frame);
   const paintedSize = 96;
-  const anchor = grounded ? 0.94 : 0.72;
+  // The generated atlas leaves different amounts of transparent space below
+  // each pose. Anchor the visible paws to world ground, not the canvas edge.
+  const top = grounded ? -paintedSize * (kittenFootBaseline.get(sprite) ?? 0.78) + 1 : -paintedSize * 0.72;
   const tilt = grounded ? 0 : Math.max(-0.13, Math.min(0.13, vx / 2500))
     + Math.max(-0.08, Math.min(0.08, -vy / 6500));
   const turnProgress = turnTime / TURN_DURATION;
@@ -430,7 +438,7 @@ function drawKittenFrame(x: number, y: number, vx: number, vy: number, grounded:
   ctx.translate(x, y);
   ctx.rotate(tilt);
   ctx.scale(facing, 1);
-  ctx.drawImage(sprite, -paintedSize / 2, -paintedSize * anchor, paintedSize, paintedSize);
+  ctx.drawImage(sprite, -paintedSize / 2, top, paintedSize, paintedSize);
   ctx.restore();
 }
 

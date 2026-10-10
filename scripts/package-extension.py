@@ -11,13 +11,14 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"]
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output", type=Path, help="Write the ZIP to this path instead of the versioned default")
 format_group = parser.add_mutually_exclusive_group()
 format_group.add_argument("--store", action="store_true", help="Build the Chrome Web Store upload")
 format_group.add_argument("--firefox", action="store_true", help="Build the Firefox signing upload")
 args = parser.parse_args()
 release_build = args.store or args.firefox
 suffix = "-firefox-upload" if args.firefox else "-store" if args.store else ""
-OUTPUT = ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}{suffix}.zip"
+OUTPUT = args.output.resolve() if args.output else ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}{suffix}.zip"
 TEMP_OUTPUT = OUTPUT.with_name(OUTPUT.name + ".tmp")
 atexit.register(lambda: TEMP_OUTPUT.unlink(missing_ok=True))
 # Keep the original extracted directory so an unpacked-extension update uses
@@ -93,6 +94,8 @@ runtime_assets.update(f"assets/themes/{route}/{part}.png"
                       for route in festival_routes for part in festival_parts)
 runtime_assets.update(f"assets/themes/{route}/{part}.webp"
                       for route in new_world_routes for part in festival_parts)
+runtime_assets.update(f"assets/themes/{route}/world-v2.webp"
+                      for route in ("great-yarn-tangle", "turtleback-world"))
 runtime_assets.add("assets/achievements/atlas.webp")
 
 for size in (16, 32, 48, 128):

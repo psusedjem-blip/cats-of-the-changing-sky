@@ -2,6 +2,18 @@
 
 A self-contained seasonal climbing game featuring Zima, Earl Grey, Betty Davis, and Gracie Bell. Formerly Zima's Skybells.
 
+## Version 3.38.0 — world art, high sky, and score clarity
+
+- Repainted the Yarn Tangle and Turtleback ascents. Yarn forms and buttons are rounder; Turtleback shows the turtle's head and front limbs below the world it carries.
+- Updated the title-screen previews to show those same paintings. Reworked the player README around installation, one twelve-world gallery, and adult/kitten stills; moved build details to a development guide.
+- Reviewed all twelve worlds at multiple heights. Upper-sky painted wisps now have irregular edges and varied fixed positions. The four new worlds retain ambience after the authored panels end, with sky colors matched to their starfield art. Starfield panels keep their original proportions instead of stretching circular details into ovals.
+- Replaced the boxed score bar with shadowed Score and mode Best readouts. Removed the redundant lower-right gear and added Settings to the main menu.
+- Kept the shared 10/20/30 bronze, silver, and crystal bell values across all worlds. Results now split each run's score into base points and multiplier bonus; Settings explains when the multiplier applies.
+- Adjusted new-world ground placement and kitten paw anchoring. Raised early achievement milestones while retaining tiers already earned in older saves.
+- Recompressed two existing world paintings without changing their pixels so the Firefox upload and matching source archives fit Mozilla's size limit.
+
+This beta passed TypeScript, package integrity, four-world kitten gameplay, all-world sky captures, new-world transition captures, and all-world scoring checks. A manual Chrome install and final audio listening review remain. Permanent Firefox installation requires Mozilla signing of this version's XPI.
+
 ## Version 3.37.1 — four new worlds and Firefox packaging
 
 - Added The Great Yarn Tangle, Turtleback World, Cat Lockup Expedition, and Moonlit Aquarium as fish-unlocked worlds in a thumbnail carousel. Each has its own ground, targets, airborne visitor, scenery, particles, and musical arrangement. Their painted ascents now move from a distinct ground scene through middle scenery into an illustrated star-filled upper sky.
