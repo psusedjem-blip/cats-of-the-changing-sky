@@ -5,6 +5,8 @@ A self-contained seasonal climbing game featuring Zima, Earl Grey, Betty Davis, 
 ## Version 3.37.1 — four new worlds and Firefox packaging
 
 - Added The Great Yarn Tangle, Turtleback World, Cat Lockup Expedition, and Moonlit Aquarium as fish-unlocked worlds in a thumbnail carousel. Each has its own ground, targets, airborne visitor, scenery, particles, and musical arrangement. Their painted ascents now move from a distinct ground scene through middle scenery into an illustrated star-filled upper sky.
+- Gave all twelve worlds distinct ambient particles: snow, rain and petals, pollen, and leaves for the original seasons; starlight, decorated eggs, fireworks, and masks for the festivals; yarn pom-poms, shell patterns, keys, and rising bubbles for the four new worlds. Festival and new-world contact effects use those same world-specific shapes.
+- Added separate procedural music arrangements for the four new worlds: Yarn Tangle's five-beat plucked music-box motif, Turtleback's six-beat low cello and high chime replies, Cat Lockup's seven-beat escape motif, and Aquarium's eight-beat floating pad and chimes. All twelve worlds route to their own melody, chord progression, and arrangement rather than reusing another world's score.
 - Added fish-unlocked kitten forms for the four original cats. Each form has separate ground and airborne pose sheets; frame isolation prevents neighboring atlas cells from appearing during animation.
 - Added 25 illustrated achievement tracks with Bronze, Silver, and Gold milestones, persistent stat tracking, in-game announcements, and a title-screen collection.
 - Made the score panel slimmer and more transparent, and kept mystery crates fixed at world positions.

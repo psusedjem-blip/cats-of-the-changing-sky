@@ -52,6 +52,25 @@ Four more painted worlds unlock from the title screen carousel:
 
 Use the left and right arrows to browse world thumbnails. Locked worlds appear gray with their fish price over the image; unlocked worlds show the full painting. Select a locked world to spend fish and unlock it permanently. The four original seasons remain free. All twelve worlds support Classic, Zen, and Expedition. Each new world has three height-based backdrop paintings and its own ground, bell targets, six-frame airborne visitor, foothold, Cat Bed art, ambient particles, and music score.
 
+### Particles and music by world
+
+The ambient particles, contact effects, and music follow the selected world. Music is generated in the game, with a separate melody, chord progression, and arrangement for each world; these are not recordings or reused tracks.
+
+| World | Ambient particles | Musical arrangement |
+| --- | --- | --- |
+| Winter | Snowflakes | Winter's piano, mallet, and low cello theme. |
+| Spring | Slanting rain with occasional petals | Spring's chimes and rising piano theme. |
+| Summer | Drifting golden pollen | Summer's bright piano and mallet theme. |
+| Autumn | Falling amber leaves | Autumn's slower piano and cello theme. |
+| Starlight Eve | Four-point starlight motes | A seven-beat piano arpeggio with chime answers. |
+| Great Egg Hunt | Decorated egg motes | A five-beat mallet melody with playful plucked notes. |
+| Fireworks Fair | Radiating sparks and upper-sky firework bursts | An eight-beat piano and chime fanfare. |
+| Moonlit Masquerade | Small mask-shaped motes | A six-beat cello and piano masquerade theme. |
+| The Great Yarn Tangle | Yarn pom-poms and thread curls | A five-beat plucked music-box motif. |
+| Turtleback World | Shell-pattern motes | A grounded six-beat cello theme with high chime replies. |
+| Cat Lockup Expedition | Floating golden keys | A seven-beat escape motif with cello and mallet calls. |
+| Moonlit Aquarium | Rising bubbles | A floating eight-beat pad and chime theme. |
+
 ## Achievements
 
 The title screen's **Achievements** button opens 25 illustrated tracks. Each track has Bronze, Silver, and Gold milestones, for 75 milestones total. They cover single-launch bell chains, a million-point run, lifetime airborne catches, world exploration, and other climbing stats. Reaching a milestone announces it briefly during play. Progress saves on this browser and is included in **Export game data**. Local test mode does not award achievements.
