@@ -114,7 +114,7 @@ function renderShop(): void {
   }
 }
 function closeProgressDialogs(): void {
-  for (const id of ['shop-overlay', 'settings-overlay']) {
+  for (const id of ['shop-overlay', 'settings-overlay', 'achievements-overlay']) {
     const overlay = document.getElementById(id);
     if (overlay) overlay.hidden = true;
   }
@@ -122,9 +122,9 @@ function closeProgressDialogs(): void {
   syncMasterAudio(paused);
   canvas.focus();
 }
-function openProgressDialog(id: 'shop-overlay' | 'settings-overlay'): void {
+function openProgressDialog(id: 'shop-overlay' | 'settings-overlay' | 'achievements-overlay'): void {
   if (scoreboardOpen) closeScoreboard();
-  const alreadyOpen = ['shop-overlay', 'settings-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
+  const alreadyOpen = ['shop-overlay', 'settings-overlay', 'achievements-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
   const wasPaused = alreadyOpen ? pauseBeforeDialog : paused;
   closeProgressDialogs();
   const overlay = document.getElementById(id);
@@ -134,6 +134,7 @@ function openProgressDialog(id: 'shop-overlay' | 'settings-overlay'): void {
   if (state !== 'title') { pauseBeforeDialog = wasPaused; paused = true; }
   syncMasterAudio(paused);
   if (id === 'shop-overlay') renderShop();
+  if (id === 'achievements-overlay') renderAchievements();
   overlay.querySelector<HTMLButtonElement>('button')?.focus();
 }
 let pauseBeforeDialog = false;
@@ -202,7 +203,7 @@ function exportGameData(): void {
   const data: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && (key.startsWith('zima-skybells-') || key === PROGRESS_KEY)) data[key] = localStorage.getItem(key) || '';
+    if (key && (key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY)) data[key] = localStorage.getItem(key) || '';
   }
   const blob = new Blob([JSON.stringify({ game: 'Cats of the Changing Sky', exportedAt: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -211,16 +212,62 @@ function exportGameData(): void {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+async function importGameData(file: File): Promise<void> {
+  const feedback = document.getElementById('import-save-feedback');
+  const fail = (message: string): void => { if (feedback) feedback.textContent = message; };
+  if (file.size > 2_000_000) { fail('That save file is too large.'); return; }
+  let data: Record<string, string>;
+  try {
+    const parsed: unknown = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== 'object' || (parsed as { game?: unknown }).game !== 'Cats of the Changing Sky') throw Error('Not a game export');
+    const source = (parsed as { data?: unknown }).data;
+    if (!source || typeof source !== 'object' || Array.isArray(source)) throw Error('Missing save data');
+    data = source as Record<string, string>;
+    if (Object.entries(data).some(([key, value]) =>
+      !(key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY)
+      || typeof value !== 'string' || value.length > 500_000)) throw Error('Invalid save entry');
+    if (data[PROGRESS_KEY]) JSON.parse(data[PROGRESS_KEY]);
+    if (data[ACHIEVEMENT_KEY]) JSON.parse(data[ACHIEVEMENT_KEY]);
+  } catch { fail('This is not a valid Cats of the Changing Sky export.'); return; }
+  if (!window.confirm('Replace this browser’s saved game data with the imported file? Export your current data first if you want a backup.')) return;
+  const oldKeys = Object.keys(localStorage).filter(key =>
+    key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY);
+  const previous = new Map(oldKeys.map(key => [key, localStorage.getItem(key) || '']));
+  try {
+    for (const key of oldKeys) localStorage.removeItem(key);
+    for (const [key, value] of Object.entries(data)) localStorage.setItem(key, value);
+    const toolbarCat = data[TOOLBAR_CAT_KEY];
+    if (toolbarCat && CHARACTER_ORDER.includes(toolbarCat as CharacterId)) {
+      try { await toolbarChrome()?.runtime?.sendMessage({ type: 'set-toolbar-cat', cat: toolbarCat }); }
+      catch (error) { console.warn('Toolbar icon preference could not be restored.', error); }
+    }
+    location.reload();
+  } catch (error) {
+    for (const key of Object.keys(data)) localStorage.removeItem(key);
+    for (const [key, value] of previous) localStorage.setItem(key, value);
+    console.warn('Game data could not be imported.', error);
+    fail('Import failed. Your previous save was restored.');
+  }
+}
 function initProgressionUi(): void {
   initToolbarIconOptions();
   document.getElementById('powerup-bar')?.addEventListener('keydown', event => {
     if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
   });
   document.getElementById('open-shop')?.addEventListener('click', () => openProgressDialog('shop-overlay'));
+  document.getElementById('open-achievements')?.addEventListener('click', () => openProgressDialog('achievements-overlay'));
   document.getElementById('settings-button')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
   document.getElementById('close-shop')?.addEventListener('click', closeProgressDialogs);
+  document.getElementById('close-achievements')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
   document.getElementById('export-save')?.addEventListener('click', exportGameData);
+  const importFile = document.querySelector<HTMLInputElement>('#import-save-file');
+  document.getElementById('import-save')?.addEventListener('click', () => importFile?.click());
+  importFile?.addEventListener('change', () => {
+    const file = importFile.files?.[0];
+    if (file) void importGameData(file);
+    importFile.value = '';
+  });
   document.getElementById('reroll-route')?.addEventListener('click', () => activateInventorySlot(9));
   document.getElementById('dev-seed-fish')?.addEventListener('click', () => {
     if (!LOCAL_TEST_BUILD || !devMode) return;
@@ -237,7 +284,7 @@ function initProgressionUi(): void {
     closeProgressDialogs();
   });
   document.addEventListener('keydown', event => {
-    const dialog = ['shop-overlay', 'settings-overlay']
+    const dialog = ['shop-overlay', 'settings-overlay', 'achievements-overlay']
       .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);
     const hotkey = /^Digit([0-9])$/.exec(event.code);
     const target = event.target as HTMLElement | null;

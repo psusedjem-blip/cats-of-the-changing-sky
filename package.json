@@ -1,12 +1,13 @@
 {
   "name": "cats-of-the-changing-sky",
   "private": true,
-  "version": "3.36.1",
+  "version": "3.37.1",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "package:store": "npm run build && python scripts/package-extension.py --store",
-    "package:amo-source": "npm run package:store && python scripts/package-amo-source.py",
+    "package:firefox": "npm run build && python scripts/package-extension.py --firefox",
+    "package:amo-source": "npm run package:firefox && python scripts/package-amo-source.py",
     "package:sideload": "npm run build && python scripts/package-extension.py"
   },
   "devDependencies": {

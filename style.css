@@ -31,14 +31,24 @@ canvas {
 .ui-panel legend { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .13em; color: var(--accent, #9fe8da); margin-bottom: 7px; }
 .season-options, .mode-options, .board-modes, .character-options { display: grid; gap: 8px; }
 .character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.season-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.world-carousel { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: center; gap: 8px; }
+.season-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.season-options button[hidden] { display: none; }
+.ui-panel .world-arrow { height: 76px; padding: 0; font-size: 36px; line-height: 1; }
+.ui-panel .world-arrow:disabled { opacity: .35; cursor: default; }
 .mode-options, .board-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ui-panel button { min-width: 0; border: 1px solid rgba(221,242,251,.28); border-radius: 12px; background: rgba(255,255,255,.075); color: #f4fbff; padding: 11px 9px; font: inherit; font-weight: 750; cursor: pointer; }
 .ui-panel button:hover { background: rgba(255,255,255,.16); }
 .ui-panel button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .ui-panel button[aria-pressed="true"] { border: 2px solid var(--accent, #9fe8da); background: rgba(255,255,255,.18); color: var(--accent, #9fe8da); }
-.season-options button { min-height: 69px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-.season-options button.locked { border-style: dashed; opacity: .83; }
+.season-options button { min-height: 125px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 5px; }
+.season-options button.locked { border-style: dashed; }
+.world-thumb { position: relative; display: block; width: 100%; height: 84px; overflow: hidden; border-radius: 8px; background: #244353; }
+.world-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 66%; }
+.season-options button.locked .world-thumb img { filter: grayscale(1) brightness(.55); }
+.world-price { position: absolute; top: 5px; right: 5px; padding: 3px 6px; border-radius: 6px; background: rgba(4,16,28,.82); color: #ffe2a1; font-size: 11px; }
+.season-options button:not(.locked) .world-price { color: #d7ffeb; }
+.world-name { font-size: 12px; line-height: 1.2; }
 .unlock-feedback { min-height: 1.2em; margin-top: 5px !important; color: #ffe0a5; text-align: center; font-size: 12px; }
 .dev-status { position: fixed; z-index: 3; left: 12px; bottom: 65px; margin: 0; padding: 5px 9px; color: #fff3bf; background: rgba(36,21,4,.85); border: 1px solid #e9bd5e; border-radius: 8px; font: 700 11px system-ui, sans-serif; }
 .dev-status[hidden], .dev-controls[hidden] { display: none; }
@@ -47,6 +57,8 @@ canvas {
 .dev-controls button { margin: 6px 6px 0 0; }
 .character-options button { min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
 .character-options img { width: min(100%, 112px); height: 58px; object-fit: contain; }
+.character-options button.locked img { filter: grayscale(1) brightness(.55); }
+.character-options button.locked { border-style: dashed; }
 .character-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
 .season-options small, .mode-options small { color: #d7e9f2; font-size: 11px; font-weight: 500; line-height: 1.2; }
 .mode-options button { min-height: 78px; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: center; }
@@ -117,21 +129,42 @@ canvas {
 .board-records li:first-child { background: rgba(255,255,255,.14); }
 .board-records .record-meta { display: block; color: var(--accent, #9fe8da); font-size: 12px; font-weight: 650; }
 .board-records .record-score { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; user-select: text; }
-@media (max-height: 650px) { .season-options button { min-height: 50px; } .character-options button { min-height: 76px; } .character-options img { height: 42px; } .mode-options button { min-height: 59px; } .ui-panel fieldset { margin-top: 9px; } .ui-panel { padding: 14px; } }
+.achievements-panel { width: min(100%, 920px); }
+.achievements-panel > p { margin-top: 8px; color: #d7e9f2; font-size: 13px; }
+.achievement-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 16px; }
+.achievement-card { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; background: rgba(255,255,255,.06); }
+.achievement-card > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; font-size: 12px; }
+.achievement-card strong { font-size: 14px; }
+.achievement-card small { color: #d7e9f2; }
+.achievement-card b { color: #adb8c0; font-size: 11px; text-transform: uppercase; }
+.achievement-card[data-tier="bronze"] b { color: #dcaa7c; }
+.achievement-card[data-tier="silver"] b { color: #d6e4ef; }
+.achievement-card[data-tier="gold"] b { color: #ffe18b; }
+.achievement-icon { display: block; flex: none; width: 64px; height: 64px; border-radius: 9px; background-image: url('assets/achievements/atlas.webp'); background-size: 500% 500%; background-repeat: no-repeat; }
+.achievement-card[data-tier="locked"] .achievement-icon { filter: grayscale(1) brightness(.55); }
+.achievement-toast { position: fixed; z-index: 5; top: 84px; left: 50%; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); padding: 10px 16px 10px 10px; border: 1px solid #ffdf9b; border-radius: 14px; background: rgba(5,23,37,.94); color: #fff9e7; box-shadow: 0 12px 35px rgba(0,0,0,.4); font: 800 14px system-ui, sans-serif; opacity: 0; transform: translate(-50%, -18px); transition: opacity .45s ease, transform .45s ease; pointer-events: none; }
+.achievement-toast[hidden] { display: none; }
+.achievement-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .achievement-toast { transition: none; } }
+@media (max-height: 650px) { .world-thumb { height: 52px; } .season-options button { min-height: 86px; } .character-options button { min-height: 76px; } .character-options img { height: 42px; } .mode-options button { min-height: 59px; } .ui-panel fieldset { margin-top: 9px; } .ui-panel { padding: 14px; } }
 @media (max-width: 620px) {
   .powerup-bar { left: 5px; bottom: 6px; grid-template-columns: repeat(5, 44px); gap: 3px; }
   .powerup-cell { width: 44px; height: 44px; }
   .powerup-cell img { width: 31px; height: 31px; }
 }
 @media (max-width: 520px) {
+  .achievement-list { grid-template-columns: 1fr; }
   .shop-items { grid-template-columns: 1fr; }
   .menu-actions { flex-wrap: wrap; }
-  .season-options, .character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .season-options { gap: 4px; }
+  .world-carousel { grid-template-columns: 28px minmax(0, 1fr) 28px; gap: 4px; }
+  .world-thumb { height: 56px; }
   .character-options button { min-height: 67px; padding: 4px 2px; font-size: 10px; }
   .character-options img { height: 38px; }
   .character-options small, .season-options small { display: none; }
   .season-options button.locked small { display: block; font-size: 9px; }
-  .season-options button { min-height: 45px; padding: 4px 2px; font-size: 11px; }
+  .season-options button { min-height: 88px; padding: 4px 2px; font-size: 11px; }
   .mode-options button { padding: 8px 3px; font-size: 12px; }
   .mode-options small { font-size: 10px; }
   .menu-actions button { min-width: 0; flex: 1; }
@@ -148,7 +181,8 @@ canvas {
   .character-options button { min-height: 60px; padding: 3px; gap: 0; font-size: 12px; }
   .character-options img { height: 32px; }
   .character-options small { font-size: 10px; }
-  .season-options button { min-height: 37px; padding: 3px; font-size: 12px; }
+  .world-thumb { height: 42px; }
+  .season-options button { min-height: 70px; padding: 3px; font-size: 12px; }
   .season-options small { font-size: 10px; }
   .mode-options button { min-height: 41px; padding: 3px; gap: 0; font-size: 12px; }
   .menu-description { margin-top: 5px !important; font-size: 12px; }

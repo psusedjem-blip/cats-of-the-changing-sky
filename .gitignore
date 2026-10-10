@@ -7,6 +7,7 @@ media/
 Unused Art/
 *.md
 !README.md
+!CHANGELOG.md
 scripts/*
 !scripts/package-extension.py
 !scripts/package-amo-source.py

@@ -27,9 +27,10 @@ jobs:
       - run: npm run check
       - run: npm run package:store
       - run: npm run package:sideload
+      - run: npm run package:amo-source
       - name: Confirm generated game script is committed
         run: git diff --exit-code -- main.js
-      - name: Publish the built ZIPs
+      - name: Publish the built ZIPs and version notes
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -40,6 +41,8 @@ jobs:
           tag="${GITHUB_REF_NAME}-v${version}-${short_sha}"
           manual_zip="../cats-of-the-changing-sky-v${version}.zip"
           store_zip="../cats-of-the-changing-sky-v${version}-store.zip"
+          firefox_zip="../cats-of-the-changing-sky-v${version}-firefox-upload.zip"
+          source_zip="../cats-of-the-changing-sky-v${version}-amo-source.zip"
           notes="$RUNNER_TEMP/release-notes.md"
 
           if [[ "$GITHUB_REF_NAME" == main ]]; then
@@ -52,20 +55,37 @@ jobs:
           printf 'For Chrome or Edge, download `%s`, extract it, and load the `zima-skybells-extension` folder as an unpacked extension.\n\n' "${manual_zip##*/}" >> "$notes"
           printf 'For Firefox 142 or newer, use `cats-of-the-changing-sky-v%s-firefox.xpi` when that Mozilla-signed asset is attached. In Firefox, open Add-ons and themes, then the gear menu > Install Add-on From File. The unsigned ZIP files are not permanent Firefox installers.\n\n' "$version" >> "$notes"
           printf 'The `%s` archive is for browser-store submissions. It has `manifest.json` at its root and excludes local test controls.\n' "${store_zip##*/}" >> "$notes"
+          printf 'The `%s` archive is the unsigned Firefox submission, and `%s` is the matching source for Mozilla review. Neither is a signed installer.\n\n' "${firefox_zip##*/}" "${source_zip##*/}" >> "$notes"
+
+          python - "$version" "$notes" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          version, notes_path = sys.argv[1:]
+          changelog = pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8')
+          section = re.search(rf'(?ms)^## Version {re.escape(version)}[^\n]*\n.*?(?=^## Version |\Z)', changelog)
+          if section is None:
+              raise SystemExit(f'CHANGELOG.md needs a Version {version} section before release')
+          with open(notes_path, 'a', encoding='utf-8') as notes:
+              notes.write(section.group().strip() + '\n')
+          PY
+
+          assets=("$manual_zip" "$store_zip" "$firefox_zip" "$source_zip")
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" "$manual_zip" "$store_zip" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$tag" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
             if [[ "$GITHUB_REF_NAME" == main ]]; then
               gh release edit "$tag" --title "$title" --notes-file "$notes" --latest --repo "$GITHUB_REPOSITORY"
             else
               gh release edit "$tag" --title "$title" --notes-file "$notes" --prerelease --repo "$GITHUB_REPOSITORY"
             fi
           elif [[ "$GITHUB_REF_NAME" == main ]]; then
-            gh release create "$tag" "$manual_zip" "$store_zip" \
+            gh release create "$tag" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "$title" --notes-file "$notes" --latest
           else
-            gh release create "$tag" "$manual_zip" "$store_zip" \
+            gh release create "$tag" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "$title" --notes-file "$notes" --prerelease --latest=false
           fi

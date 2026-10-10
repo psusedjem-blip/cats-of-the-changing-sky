@@ -94,7 +94,7 @@ function drawSceneGround(art: SceneAssets): void {
   const layerHeight = Math.max(270, height * art.groundHeight);
   // Align the painted center walking surface with Zima's world-space feet.
   drawCoverImage(art.ground, 0, groundY - layerHeight * art.groundSurface, width, layerHeight, 1, art.groundSurface);
-  if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring') drawGroundCutouts(groundY, false);
+  if (!isNewWorld(selectedTheme) && (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')) drawGroundCutouts(groundY, false);
 }
 
 function drawGroundCutouts(groundY: number, inFront: boolean): void {
@@ -172,7 +172,7 @@ function drawSceneFront(art: SceneAssets): void {
   const top = groundY - layerHeight * art.groundSurface;
   if (top > height || top + layerHeight < 0) return;
   ctx.drawImage(groundFrontImage(art), 0, top);
-  if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring') drawGroundCutouts(groundY, true);
+  if (!isNewWorld(selectedTheme) && (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')) drawGroundCutouts(groundY, true);
 }
 
 function drawSceneProp(art: SceneAssets): void {

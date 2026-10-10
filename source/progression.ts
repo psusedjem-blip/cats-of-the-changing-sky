@@ -6,7 +6,7 @@ type SupplyId = 'catBed' | 'campProvision' | 'routeReroll';
 type RewardId = GearId | EnchantmentId | SupplyId | 'fish';
 type GearSlot = 'movement' | 'utility';
 type ProgressSave = {
-  version: 2; fish: number; owned: RewardId[]; unlockedFestivals: FestivalName[];
+  version: 3; fish: number; owned: RewardId[]; unlockedFestivals: FestivalName[]; unlockedKittens: CharacterId[];
   movement: GearId | null; utility: GearId | null;
   enchantment: EnchantmentId | null;
   supplies: Record<SupplyId, number>;
@@ -31,7 +31,7 @@ const ENCHANTMENT_IDS: EnchantmentId[] = ['bellwake', 'softfall'];
 const SUPPLY_IDS: SupplyId[] = ['catBed', 'campProvision', 'routeReroll'];
 
 function freshProgress(): ProgressSave {
-  return { version: 2, fish: 0, owned: [], unlockedFestivals: [], movement: null, utility: null,
+  return { version: 3, fish: 0, owned: [], unlockedFestivals: [], unlockedKittens: [], movement: null, utility: null,
     enchantment: null, supplies: { catBed: 0, campProvision: 0, routeReroll: 0 } };
 }
 function loadProgress(): ProgressSave {
@@ -42,15 +42,19 @@ function loadProgress(): ProgressSave {
       localStorage.removeItem(TEST_PROGRESS_BACKUP_KEY);
     }
     const raw = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
-    if (!raw || (raw.version !== 1 && raw.version !== 2)) return freshProgress();
+    if (!raw || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3)) return freshProgress();
     const owned = Array.isArray(raw.owned) ? raw.owned.filter((id: unknown) =>
       GEAR_IDS.includes(id as GearId) || ENCHANTMENT_IDS.includes(id as EnchantmentId)) : [];
     const supplies = Object.fromEntries(SUPPLY_IDS.map(id => [id,
       Number.isSafeInteger(raw.supplies?.[id]) ? Math.max(0, Math.min(99, raw.supplies[id])) : 0])) as Record<SupplyId, number>;
-    const unlockedFestivals = raw.version === 2 && Array.isArray(raw.unlockedFestivals)
+    const unlockedFestivals = raw.version >= 2 && Array.isArray(raw.unlockedFestivals)
       ? raw.unlockedFestivals.filter((id: unknown): id is FestivalName =>
-          ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'].includes(id as string)) : [];
-    return { version: 2, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals,
+          ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade',
+            'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium'].includes(id as string)) : [];
+    const unlockedKittens = raw.version === 3 && Array.isArray(raw.unlockedKittens)
+      ? raw.unlockedKittens.filter((id: unknown): id is CharacterId =>
+          ['zima', 'earl-grey', 'betty-davis', 'gracie-bell'].includes(id as string)) : [];
+    return { version: 3, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals, unlockedKittens,
       owned, movement: owned.includes(raw.movement) ? raw.movement : null,
       utility: owned.includes(raw.utility) ? raw.utility : null,
       enchantment: owned.includes(raw.enchantment) ? raw.enchantment : null, supplies };
@@ -65,6 +69,21 @@ function restoreTestPurchases(): void {
 function festivalUnlocked(theme: ThemeName): boolean {
   return !isFestival(theme) || progress.unlockedFestivals.includes(theme) || (LOCAL_TEST_BUILD && devMode);
 }
+const KITTEN_COST: Record<CharacterId, number> = {
+  zima: 60, 'earl-grey': 70, 'betty-davis': 80, 'gracie-bell': 90,
+};
+function kittenUnlocked(character: CharacterId): boolean {
+  return progress.unlockedKittens.includes(character) || (LOCAL_TEST_BUILD && devMode);
+}
+function unlockKitten(character: CharacterId): boolean {
+  if (kittenUnlocked(character)) return true;
+  const cost = KITTEN_COST[character];
+  if (progress.fish < cost) return false;
+  progress.fish -= cost;
+  progress.unlockedKittens.push(character);
+  saveProgress();
+  return true;
+}
 function unlockFestival(theme: FestivalName): boolean {
   if (progress.unlockedFestivals.includes(theme)) return true;
   if (LOCAL_TEST_BUILD && devMode) return true;
@@ -72,6 +91,7 @@ function unlockFestival(theme: FestivalName): boolean {
   if (progress.fish < cost) return false;
   progress.fish -= cost;
   progress.unlockedFestivals.push(theme);
+  observeAchievement('worlds', progress.unlockedFestivals.length);
   saveProgress();
   return true;
 }
@@ -116,11 +136,14 @@ function startProgressRun(): void {
 function awardFish(amount: number, reason: string): void {
   if (amount <= 0 || runDebugged) return;
   progress.fish = Math.min(Number.MAX_SAFE_INTEGER, progress.fish + amount);
+  incrementAchievement('fish', amount);
+  observeAchievement('wallet', progress.fish);
   saveProgress();
   message = `+${amount} FISH · ${reason.toUpperCase()}`;
   messageTimer = 1.6;
 }
 function updateAltitudeRewards(): void {
+  observeAchievement('height', highestY);
   const regular = Math.min(42, Math.floor(Math.max(0, highestY) / 1000));
   const high = Math.floor(Math.max(0, highestY - 42000) / 2500);
   let earned = 0;
@@ -160,6 +183,7 @@ function purchaseItem(id: RewardId): boolean {
   progress.fish -= item.cost - testSpent;
   if (item.slot) {
     progress.owned.push(id);
+    observeAchievement('gear', progress.owned.length);
     if (item.slot === 'movement') progress.movement = id as GearId;
     else if (item.slot === 'utility') progress.utility = id as GearId;
     else progress.enchantment = id as EnchantmentId;
@@ -182,7 +206,9 @@ function grantCrateReward(id: RewardId): void {
     progress.supplies[id as SupplyId] = Math.min(9, progress.supplies[id as SupplyId] + 1);
     saveProgress();
   } else if (!progress.owned.includes(id)) {
-    progress.owned.push(id); saveProgress();
+    progress.owned.push(id);
+    observeAchievement('gear', progress.owned.length);
+    saveProgress();
   } else { awardFish(4, 'duplicate'); return; }
   message = `${PROGRESSION_ITEMS.find(item => item.id === id)?.name.toUpperCase()} FOUND`;
   messageTimer = 2;
@@ -223,6 +249,7 @@ function updateCrates(): void {
     if (!sweptEllipseContact(cat.prevX, cat.prevY + cat.h * 0.45,
       cat.x, cat.y + cat.h * 0.45, crate.x, y, 59, 55)) continue;
     crate.opened = true;
+    incrementAchievement('crates');
     const offered = crateOffer(crate);
     grantCrateReward(offered);
     addSparkBurst(crate.x, y, 18, themeMeta().accent);
@@ -238,7 +265,7 @@ const festivalBedArt: Partial<Record<FestivalName, HTMLImageElement>> = {};
 function loadFestivalBed(theme: ThemeName): void {
   if (!isFestival(theme) || festivalBedArt[theme]) return;
   const image = new Image();
-  image.src = `assets/themes/${theme}/cat-bed.png`;
+  image.src = `assets/themes/${theme}/cat-bed.${isNewWorld(theme) ? 'webp' : 'png'}`;
   festivalBedArt[theme] = image;
 }
 for (const item of [...PROGRESSION_ITEMS, { id: 'fish', icon: 'fish.webp' }, { id: 'crate', icon: 'crate.webp' }]) {

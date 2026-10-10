@@ -44,6 +44,26 @@ const CHAPTER_BANDS = {
         { name: 'Lantern Treehouses', near: '#4d3e61', light: '#f4bdc6' },
         { name: 'Clocktower Moon', near: '#32284f', light: '#f4daae' },
     ],
+    'great-yarn-tangle': [
+        { name: 'Skein Village', near: '#9b5d71', light: '#ffe8c7' },
+        { name: 'Woven Heights', near: '#89648a', light: '#ffdebb' },
+        { name: 'Starry Loom', near: '#4f527a', light: '#ffe8c9' },
+    ],
+    'turtleback-world': [
+        { name: 'Mossy Riverbank', near: '#5a8a69', light: '#f9edbd' },
+        { name: 'Shell Hills', near: '#659b7b', light: '#f6eac5' },
+        { name: 'Turtle Horizon', near: '#6e9c8b', light: '#fff0d4' },
+    ],
+    'cat-lockup-expedition': [
+        { name: 'Quiet Corridors', near: '#47597b', light: '#f6d5a4' },
+        { name: 'Open Watchtower', near: '#526587', light: '#ffe2b5' },
+        { name: 'Freedom Gate', near: '#8093a3', light: '#fff0cf' },
+    ],
+    'moonlit-aquarium': [
+        { name: 'Sunken Ruins', near: '#195b78', light: '#a6d9e5' },
+        { name: 'Coral Gallery', near: '#38779a', light: '#b1eaf1' },
+        { name: 'Moonlit Rim', near: '#748bb6', light: '#eee0ff' },
+    ],
 };
 const UPPER_REALM_PATHS = {
     winter: { mid: 'assets/themes/winter/winter-mid-terrain-v2.png', high: 'assets/themes/winter/winter-high-terrain.webp' },
@@ -60,6 +80,10 @@ const UPPER_FOOTHOLD_PATHS = {
     'great-egg-hunt': 'assets/themes/great-egg-hunt/foothold.png',
     'fireworks-fair': 'assets/themes/fireworks-fair/foothold.png',
     'moonlit-masquerade': 'assets/themes/moonlit-masquerade/foothold.png',
+    'great-yarn-tangle': 'assets/themes/great-yarn-tangle/foothold.webp',
+    'turtleback-world': 'assets/themes/turtleback-world/foothold.webp',
+    'cat-lockup-expedition': 'assets/themes/cat-lockup-expedition/foothold.webp',
+    'moonlit-aquarium': 'assets/themes/moonlit-aquarium/foothold.webp',
 };
 const upperRealmArt = {};
 const upperFootholdArt = {};
@@ -75,9 +99,11 @@ const SEASON_SKY_COLOR = {
     winter: '#081e40', spring: '#3446a6', summer: '#76b7f5', autumn: '#231838',
     'starlight-eve': '#111b40', 'great-egg-hunt': '#8495c9',
     'fireworks-fair': '#142652', 'moonlit-masquerade': '#20152d',
+    'great-yarn-tangle': '#dbb1aa', 'turtleback-world': '#a6c7bc',
+    'cat-lockup-expedition': '#536889', 'moonlit-aquarium': '#144667',
 };
 const seasonContinuousArt = {};
-for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade']) {
+for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade', 'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium']) {
     const world = new Image();
     const upper = new Image();
     const starfield = new Image();
@@ -89,6 +115,7 @@ for (const theme of ['spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-h
 const continuousState = {
     winter: 'idle', spring: 'idle', summer: 'idle', autumn: 'idle',
     'starlight-eve': 'idle', 'great-egg-hunt': 'idle', 'fireworks-fair': 'idle', 'moonlit-masquerade': 'idle',
+    'great-yarn-tangle': 'idle', 'turtleback-world': 'idle', 'cat-lockup-expedition': 'idle', 'moonlit-aquarium': 'idle',
 };
 function loadContinuousSeason(theme) {
     if (continuousState[theme] !== 'idle')
@@ -97,9 +124,9 @@ function loadContinuousSeason(theme) {
     const art = theme === 'winter' ? { world: winterContinuousWorld, upper: winterUpperSky, starfield: winterStarfield }
         : seasonContinuousArt[theme];
     const { world, upper, starfield } = art;
-    art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.png` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
-    art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.png` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
-    art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.png` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
+    art.world.src = isFestival(theme) ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+    art.upper.src = isFestival(theme) ? `assets/themes/${theme}/upper-sky.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-upper-sky-v1.png`;
+    art.starfield.src = isFestival(theme) ? `assets/themes/${theme}/starfield.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-starfield-v1.png`;
     void Promise.all([world, upper, starfield].map(image => image.decode())).then(() => {
         if (art.world !== world || art.upper !== upper || art.starfield !== starfield)
             return;
@@ -148,7 +175,7 @@ function continuousSeasonReady(theme) {
         : [seasonContinuousArt[theme].world, seasonContinuousArt[theme].upper, seasonContinuousArt[theme].starfield];
     return images.every(image => image.complete && image.naturalWidth > 0);
 }
-function prepareWinterSkyPanel(image) {
+function prepareWinterSkyPanel(image, tighterFade = false) {
     const canvas = document.createElement('canvas');
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
@@ -157,8 +184,8 @@ function prepareWinterSkyPanel(image) {
     paint.globalCompositeOperation = 'destination-in';
     const mask = paint.createLinearGradient(0, 0, 0, canvas.height);
     mask.addColorStop(0, 'rgba(255,255,255,0)');
-    mask.addColorStop(0.18, '#fff');
-    mask.addColorStop(0.76, '#fff');
+    mask.addColorStop(tighterFade ? 0.10 : 0.18, '#fff');
+    mask.addColorStop(tighterFade ? 0.88 : 0.76, '#fff');
     mask.addColorStop(1, 'rgba(255,255,255,0)');
     paint.fillStyle = mask;
     paint.fillRect(0, 0, canvas.width, canvas.height);
@@ -324,14 +351,14 @@ function drawWinterHighSky(pixelsPerWorld) {
         ctx.restore();
     }
 }
-function prepareSeasonWorld(image) {
+function prepareSeasonWorld(image, tighterFade = false) {
     const canvas = document.createElement('canvas');
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
     const paint = canvas.getContext('2d');
     paint.drawImage(image, 0, 0);
     paint.globalCompositeOperation = 'destination-in';
-    const mask = paint.createLinearGradient(0, 0, 0, canvas.height * 0.20);
+    const mask = paint.createLinearGradient(0, 0, 0, canvas.height * (tighterFade ? 0.10 : 0.20));
     mask.addColorStop(0, 'rgba(255,255,255,0)');
     mask.addColorStop(1, '#fff');
     paint.fillStyle = mask;
@@ -431,11 +458,11 @@ function drawSeasonHighSky(theme, pixelsPerWorld) {
 function drawSeasonContinuousWorld(theme) {
     const art = seasonContinuousArt[theme];
     if (!art.preparedWorld)
-        art.preparedWorld = prepareSeasonWorld(art.world);
+        art.preparedWorld = prepareSeasonWorld(art.world, isNewWorld(theme));
     if (!art.preparedUpper)
-        art.preparedUpper = prepareWinterSkyPanel(art.upper);
+        art.preparedUpper = prepareWinterSkyPanel(art.upper, isNewWorld(theme));
     if (!art.preparedStarfield)
-        art.preparedStarfield = prepareWinterSkyPanel(art.starfield);
+        art.preparedStarfield = prepareWinterSkyPanel(art.starfield, isNewWorld(theme));
     const scale = Math.max(width / art.world.naturalWidth, height * 1.4 / art.world.naturalHeight);
     const imageWidth = art.world.naturalWidth * scale;
     const imageHeight = art.world.naturalHeight * scale;
@@ -450,12 +477,13 @@ function drawSeasonContinuousWorld(theme) {
     drawPanel(art.preparedWorld, 0);
     drawPanel(art.preparedUpper, 12000);
     // The final painting's feathered top reveals these later motifs gradually.
-    drawSeasonHighSky(theme, pixelsPerWorld);
+    if (!isNewWorld(theme))
+        drawSeasonHighSky(theme, pixelsPerWorld);
     if (isFestival(theme)) {
         // One taller authored starfield carries each festival through Expedition's
         // summit. It fades into the later motifs without repeating the painting.
-        const starHeight = imageHeight * 1.55;
-        const bottom = height + (backdropCameraY - 23000) * pixelsPerWorld;
+        const starHeight = imageHeight * (isNewWorld(theme) ? 1.75 : 1.55);
+        const bottom = height + (backdropCameraY - (isNewWorld(theme) ? 25000 : 23000)) * pixelsPerWorld;
         if (bottom > 0 && bottom - starHeight < height) {
             ctx.drawImage(art.preparedStarfield, x, bottom - starHeight, imageWidth, starHeight);
         }
@@ -495,7 +523,8 @@ function prepareUpperTerrain(theme) {
         high: prepareUpperTerrainImage(art.high, 0.78),
     };
 }
-for (const theme of ['winter', 'spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade']) {
+for (const theme of ['winter', 'spring', 'summer', 'autumn', 'starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade',
+    'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium']) {
     const mid = new Image();
     const high = new Image();
     const bridge = new Image();
@@ -506,6 +535,13 @@ function loadUpperRealm(theme) {
     const art = upperRealmArt[theme];
     if (art.state !== 'idle')
         return;
+    if (isNewWorld(theme)) {
+        const foothold = new Image();
+        foothold.src = UPPER_FOOTHOLD_PATHS[theme];
+        upperFootholdArt[theme] = foothold;
+        art.state = 'ready';
+        return;
+    }
     art.state = 'loading';
     const { mid, high, bridge } = art;
     let decoding = false;
@@ -578,6 +614,8 @@ function chapterEase(value) {
     return t * t * (3 - 2 * t);
 }
 function drawClimbChapters() {
+    if (isNewWorld(selectedTheme))
+        return;
     const art = upperRealmArt[selectedTheme];
     if (art.state !== 'ready')
         return;
@@ -618,7 +656,8 @@ function drawUpperFoothold(x, y) {
     const h = w * image.naturalHeight / image.naturalWidth;
     // Align the flat center of each hand-painted ledge with Zima's feet.
     const top = { winter: 0.404, spring: 0.379, summer: 0.413, autumn: 0.350,
-        'starlight-eve': 0.42, 'great-egg-hunt': 0.40, 'fireworks-fair': 0.42, 'moonlit-masquerade': 0.40 };
+        'starlight-eve': 0.42, 'great-egg-hunt': 0.40, 'fireworks-fair': 0.42, 'moonlit-masquerade': 0.40,
+        'great-yarn-tangle': 0.379, 'turtleback-world': 0.413, 'cat-lockup-expedition': 0.350, 'moonlit-aquarium': 0.404 };
     ctx.drawImage(image, x - w * 0.54, y - h * top[selectedTheme], w, h);
 }
 const PROGRESS_KEY = 'cats-changing-sky-progression-v1';
@@ -638,7 +677,7 @@ const GEAR_IDS = ['windstep', 'softstep', 'compass', 'echo'];
 const ENCHANTMENT_IDS = ['bellwake', 'softfall'];
 const SUPPLY_IDS = ['catBed', 'campProvision', 'routeReroll'];
 function freshProgress() {
-    return { version: 2, fish: 0, owned: [], unlockedFestivals: [], movement: null, utility: null,
+    return { version: 3, fish: 0, owned: [], unlockedFestivals: [], unlockedKittens: [], movement: null, utility: null,
         enchantment: null, supplies: { catBed: 0, campProvision: 0, routeReroll: 0 } };
 }
 function loadProgress() {
@@ -649,14 +688,17 @@ function loadProgress() {
             localStorage.removeItem(TEST_PROGRESS_BACKUP_KEY);
         }
         const raw = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null');
-        if (!raw || (raw.version !== 1 && raw.version !== 2))
+        if (!raw || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3))
             return freshProgress();
         const owned = Array.isArray(raw.owned) ? raw.owned.filter((id) => GEAR_IDS.includes(id) || ENCHANTMENT_IDS.includes(id)) : [];
         const supplies = Object.fromEntries(SUPPLY_IDS.map(id => [id,
             Number.isSafeInteger(raw.supplies?.[id]) ? Math.max(0, Math.min(99, raw.supplies[id])) : 0]));
-        const unlockedFestivals = raw.version === 2 && Array.isArray(raw.unlockedFestivals)
-            ? raw.unlockedFestivals.filter((id) => ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'].includes(id)) : [];
-        return { version: 2, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals,
+        const unlockedFestivals = raw.version >= 2 && Array.isArray(raw.unlockedFestivals)
+            ? raw.unlockedFestivals.filter((id) => ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade',
+                'great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium'].includes(id)) : [];
+        const unlockedKittens = raw.version === 3 && Array.isArray(raw.unlockedKittens)
+            ? raw.unlockedKittens.filter((id) => ['zima', 'earl-grey', 'betty-davis', 'gracie-bell'].includes(id)) : [];
+        return { version: 3, fish: Number.isSafeInteger(raw.fish) ? Math.max(0, raw.fish) : 0, unlockedFestivals, unlockedKittens,
             owned, movement: owned.includes(raw.movement) ? raw.movement : null,
             utility: owned.includes(raw.utility) ? raw.utility : null,
             enchantment: owned.includes(raw.enchantment) ? raw.enchantment : null, supplies };
@@ -675,6 +717,23 @@ function restoreTestPurchases() {
 function festivalUnlocked(theme) {
     return !isFestival(theme) || progress.unlockedFestivals.includes(theme) || (LOCAL_TEST_BUILD && devMode);
 }
+const KITTEN_COST = {
+    zima: 60, 'earl-grey': 70, 'betty-davis': 80, 'gracie-bell': 90,
+};
+function kittenUnlocked(character) {
+    return progress.unlockedKittens.includes(character) || (LOCAL_TEST_BUILD && devMode);
+}
+function unlockKitten(character) {
+    if (kittenUnlocked(character))
+        return true;
+    const cost = KITTEN_COST[character];
+    if (progress.fish < cost)
+        return false;
+    progress.fish -= cost;
+    progress.unlockedKittens.push(character);
+    saveProgress();
+    return true;
+}
 function unlockFestival(theme) {
     if (progress.unlockedFestivals.includes(theme))
         return true;
@@ -685,6 +744,7 @@ function unlockFestival(theme) {
         return false;
     progress.fish -= cost;
     progress.unlockedFestivals.push(theme);
+    observeAchievement('worlds', progress.unlockedFestivals.length);
     saveProgress();
     return true;
 }
@@ -743,11 +803,14 @@ function awardFish(amount, reason) {
     if (amount <= 0 || runDebugged)
         return;
     progress.fish = Math.min(Number.MAX_SAFE_INTEGER, progress.fish + amount);
+    incrementAchievement('fish', amount);
+    observeAchievement('wallet', progress.fish);
     saveProgress();
     message = `+${amount} FISH · ${reason.toUpperCase()}`;
     messageTimer = 1.6;
 }
 function updateAltitudeRewards() {
+    observeAchievement('height', highestY);
     const regular = Math.min(42, Math.floor(Math.max(0, highestY) / 1000));
     const high = Math.floor(Math.max(0, highestY - 42000) / 2500);
     let earned = 0;
@@ -809,6 +872,7 @@ function purchaseItem(id) {
     progress.fish -= item.cost - testSpent;
     if (item.slot) {
         progress.owned.push(id);
+        observeAchievement('gear', progress.owned.length);
         if (item.slot === 'movement')
             progress.movement = id;
         else if (item.slot === 'utility')
@@ -846,6 +910,7 @@ function grantCrateReward(id) {
     }
     else if (!progress.owned.includes(id)) {
         progress.owned.push(id);
+        observeAchievement('gear', progress.owned.length);
         saveProgress();
     }
     else {
@@ -894,6 +959,7 @@ function updateCrates() {
         if (!sweptEllipseContact(cat.prevX, cat.prevY + cat.h * 0.45, cat.x, cat.y + cat.h * 0.45, crate.x, y, 59, 55))
             continue;
         crate.opened = true;
+        incrementAchievement('crates');
         const offered = crateOffer(crate);
         grantCrateReward(offered);
         addSparkBurst(crate.x, y, 18, themeMeta().accent);
@@ -910,7 +976,7 @@ function loadFestivalBed(theme) {
     if (!isFestival(theme) || festivalBedArt[theme])
         return;
     const image = new Image();
-    image.src = `assets/themes/${theme}/cat-bed.png`;
+    image.src = `assets/themes/${theme}/cat-bed.${isNewWorld(theme) ? 'webp' : 'png'}`;
     festivalBedArt[theme] = image;
 }
 for (const item of [...PROGRESSION_ITEMS, { id: 'fish', icon: 'fish.webp' }, { id: 'crate', icon: 'crate.webp' }]) {
@@ -1294,7 +1360,7 @@ function renderShop() {
     }
 }
 function closeProgressDialogs() {
-    for (const id of ['shop-overlay', 'settings-overlay']) {
+    for (const id of ['shop-overlay', 'settings-overlay', 'achievements-overlay']) {
         const overlay = document.getElementById(id);
         if (overlay)
             overlay.hidden = true;
@@ -1307,7 +1373,7 @@ function closeProgressDialogs() {
 function openProgressDialog(id) {
     if (scoreboardOpen)
         closeScoreboard();
-    const alreadyOpen = ['shop-overlay', 'settings-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
+    const alreadyOpen = ['shop-overlay', 'settings-overlay', 'achievements-overlay'].some(dialogId => !document.getElementById(dialogId)?.hidden);
     const wasPaused = alreadyOpen ? pauseBeforeDialog : paused;
     closeProgressDialogs();
     const overlay = document.getElementById(id);
@@ -1322,6 +1388,8 @@ function openProgressDialog(id) {
     syncMasterAudio(paused);
     if (id === 'shop-overlay')
         renderShop();
+    if (id === 'achievements-overlay')
+        renderAchievements();
     overlay.querySelector('button')?.focus();
 }
 let pauseBeforeDialog = false;
@@ -1394,7 +1462,7 @@ function exportGameData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('zima-skybells-') || key === PROGRESS_KEY))
+        if (key && (key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY))
             data[key] = localStorage.getItem(key) || '';
     }
     const blob = new Blob([JSON.stringify({ game: 'Cats of the Changing Sky', exportedAt: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
@@ -1405,6 +1473,64 @@ function exportGameData() {
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+async function importGameData(file) {
+    const feedback = document.getElementById('import-save-feedback');
+    const fail = (message) => { if (feedback)
+        feedback.textContent = message; };
+    if (file.size > 2_000_000) {
+        fail('That save file is too large.');
+        return;
+    }
+    let data;
+    try {
+        const parsed = JSON.parse(await file.text());
+        if (!parsed || typeof parsed !== 'object' || parsed.game !== 'Cats of the Changing Sky')
+            throw Error('Not a game export');
+        const source = parsed.data;
+        if (!source || typeof source !== 'object' || Array.isArray(source))
+            throw Error('Missing save data');
+        data = source;
+        if (Object.entries(data).some(([key, value]) => !(key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY)
+            || typeof value !== 'string' || value.length > 500_000))
+            throw Error('Invalid save entry');
+        if (data[PROGRESS_KEY])
+            JSON.parse(data[PROGRESS_KEY]);
+        if (data[ACHIEVEMENT_KEY])
+            JSON.parse(data[ACHIEVEMENT_KEY]);
+    }
+    catch {
+        fail('This is not a valid Cats of the Changing Sky export.');
+        return;
+    }
+    if (!window.confirm('Replace this browser’s saved game data with the imported file? Export your current data first if you want a backup.'))
+        return;
+    const oldKeys = Object.keys(localStorage).filter(key => key.startsWith('zima-skybells-') || key === PROGRESS_KEY || key === ACHIEVEMENT_KEY);
+    const previous = new Map(oldKeys.map(key => [key, localStorage.getItem(key) || '']));
+    try {
+        for (const key of oldKeys)
+            localStorage.removeItem(key);
+        for (const [key, value] of Object.entries(data))
+            localStorage.setItem(key, value);
+        const toolbarCat = data[TOOLBAR_CAT_KEY];
+        if (toolbarCat && CHARACTER_ORDER.includes(toolbarCat)) {
+            try {
+                await toolbarChrome()?.runtime?.sendMessage({ type: 'set-toolbar-cat', cat: toolbarCat });
+            }
+            catch (error) {
+                console.warn('Toolbar icon preference could not be restored.', error);
+            }
+        }
+        location.reload();
+    }
+    catch (error) {
+        for (const key of Object.keys(data))
+            localStorage.removeItem(key);
+        for (const [key, value] of previous)
+            localStorage.setItem(key, value);
+        console.warn('Game data could not be imported.', error);
+        fail('Import failed. Your previous save was restored.');
+    }
+}
 function initProgressionUi() {
     initToolbarIconOptions();
     document.getElementById('powerup-bar')?.addEventListener('keydown', event => {
@@ -1412,10 +1538,20 @@ function initProgressionUi() {
             event.stopPropagation();
     });
     document.getElementById('open-shop')?.addEventListener('click', () => openProgressDialog('shop-overlay'));
+    document.getElementById('open-achievements')?.addEventListener('click', () => openProgressDialog('achievements-overlay'));
     document.getElementById('settings-button')?.addEventListener('click', () => openProgressDialog('settings-overlay'));
     document.getElementById('close-shop')?.addEventListener('click', closeProgressDialogs);
+    document.getElementById('close-achievements')?.addEventListener('click', closeProgressDialogs);
     document.getElementById('close-settings')?.addEventListener('click', closeProgressDialogs);
     document.getElementById('export-save')?.addEventListener('click', exportGameData);
+    const importFile = document.querySelector('#import-save-file');
+    document.getElementById('import-save')?.addEventListener('click', () => importFile?.click());
+    importFile?.addEventListener('change', () => {
+        const file = importFile.files?.[0];
+        if (file)
+            void importGameData(file);
+        importFile.value = '';
+    });
     document.getElementById('reroll-route')?.addEventListener('click', () => activateInventorySlot(9));
     document.getElementById('dev-seed-fish')?.addEventListener('click', () => {
         if (!LOCAL_TEST_BUILD || !devMode)
@@ -1437,7 +1573,7 @@ function initProgressionUi() {
         closeProgressDialogs();
     });
     document.addEventListener('keydown', event => {
-        const dialog = ['shop-overlay', 'settings-overlay']
+        const dialog = ['shop-overlay', 'settings-overlay', 'achievements-overlay']
             .map(id => document.getElementById(id)).find(overlay => overlay && !overlay.hidden);
         const hotkey = /^Digit([0-9])$/.exec(event.code);
         const target = event.target;
@@ -1983,6 +2119,80 @@ function scheduleMoonlitMasqueradeBar(bar, when) {
         schedulePixelPluck(p.melody[2], when + beat * 5.1, 0.21, 0.0035);
     return length;
 }
+function scheduleYarnTangleBar(bar, when) {
+    // A lilting 5-beat music-box waltz, with a descending stitched melody.
+    const beat = 0.28, length = beat * 5;
+    const chords = [
+        { bass: 48, notes: [60, 64, 67, 71], tune: [79, 76, 72] },
+        { bass: 45, notes: [57, 60, 64, 69], tune: [76, 74, 69] },
+        { bass: 50, notes: [62, 65, 69, 72], tune: [77, 74, 72] },
+        { bass: 43, notes: [55, 59, 62, 67], tune: [74, 71, 67] },
+    ];
+    const chord = chords[Math.floor(bar / 2) % chords.length];
+    scheduleCello(chord.bass, when, length * 0.91, 0.008);
+    for (let step = 0; step < 5; step++)
+        schedulePixelPluck(chord.notes[[0, 2, 1, 3, 2][step]] + 12, when + beat * step, 0.21, step === 0 ? 0.008 : 0.005);
+    scheduleMallet(chord.tune[bar % 3], when + beat * 0.6, 0.44, 0.011);
+    if (bar % 2)
+        scheduleChime(chord.tune[(bar + 1) % 3] + 12, when + beat * 3.3, 0.36, 0.006);
+    return length;
+}
+function scheduleTurtlebackBar(bar, when) {
+    // Slow, grounded six-beat march opening into high bell answers.
+    const beat = 0.38, length = beat * 6;
+    const chords = [
+        { bass: 43, notes: [55, 59, 62, 67], tune: [74, 79] },
+        { bass: 47, notes: [59, 62, 66, 71], tune: [78, 81] },
+        { bass: 52, notes: [64, 67, 71, 76], tune: [83, 79] },
+        { bass: 45, notes: [57, 60, 64, 69], tune: [76, 81] },
+    ];
+    const chord = chords[bar % chords.length];
+    scheduleCello(chord.bass - 12, when, length * 0.96, 0.016);
+    scheduleWarmPad(chord.notes[1], when, length * 0.94, 0.005);
+    schedulePiano(chord.notes[0] + 12, when + beat, beat * 1.8, 0.015);
+    schedulePiano(chord.notes[2] + 12, when + beat * 3, beat * 1.7, 0.011);
+    if (bar % 2 === 0)
+        scheduleMallet(chord.tune[0], when + beat * 2.2, 0.55, 0.010);
+    scheduleChime(chord.tune[1], when + beat * 4.7, 0.60, 0.007);
+    return length;
+}
+function scheduleCatLockupBar(bar, when) {
+    // A deliberate seven-beat escape motif with brass-like mallet calls.
+    const beat = 0.29, length = beat * 7;
+    const chords = [
+        { bass: 50, notes: [62, 65, 69, 74], tune: [77, 81, 86] },
+        { bass: 46, notes: [58, 62, 65, 70], tune: [74, 77, 82] },
+        { bass: 53, notes: [65, 69, 72, 77], tune: [81, 84, 89] },
+        { bass: 48, notes: [60, 64, 67, 72], tune: [79, 83, 86] },
+    ];
+    const chord = chords[Math.floor(bar / 2) % chords.length];
+    scheduleCello(chord.bass - 12, when, length * 0.93, 0.014);
+    schedulePiano(chord.notes[0], when + beat * 0.2, beat * 2, 0.019);
+    scheduleMallet(chord.tune[0], when + beat * 1.1, 0.42, 0.011);
+    scheduleMallet(chord.tune[1], when + beat * 3.1, 0.37, 0.009);
+    if (bar % 2)
+        scheduleChime(chord.tune[2], when + beat * 5.4, 0.45, 0.008);
+    scheduleBrush(when + beat * 6.4, 0.002);
+    return length;
+}
+function scheduleAquariumBar(bar, when) {
+    // A floating eight-beat glass-harmonic phrase, with a low tide pulse.
+    const beat = 0.34, length = beat * 8;
+    const chords = [
+        { bass: 45, notes: [57, 60, 64, 69, 72], tune: [76, 81, 84] },
+        { bass: 52, notes: [64, 67, 71, 76, 79], tune: [79, 83, 88] },
+        { bass: 48, notes: [60, 64, 67, 72, 76], tune: [72, 79, 84] },
+        { bass: 50, notes: [62, 65, 69, 74, 77], tune: [77, 81, 86] },
+    ];
+    const chord = chords[bar % chords.length];
+    scheduleWarmPad(chord.notes[0], when, length * 0.98, 0.007);
+    scheduleCello(chord.bass - 12, when, length * 0.87, 0.007);
+    for (let step = 0; step < 4; step++)
+        scheduleChime(chord.notes[step + 1] + 12, when + beat * (step * 2 + 0.5), beat * 2.2, 0.006);
+    if (bar % 2 === 0)
+        scheduleMallet(chord.tune[1], when + beat * 3.2, 0.75, 0.006);
+    return length;
+}
 function updateMusic(context) {
     if (!audioCtx || audioCtx.state !== 'running' || muted)
         return;
@@ -2008,8 +2218,16 @@ function updateMusic(context) {
             len = scheduleGreatEggHuntBar(musicBar, musicNext);
         else if (context.theme === 'fireworks-fair')
             len = scheduleFireworksFairBar(musicBar, musicNext);
-        else
+        else if (context.theme === 'moonlit-masquerade')
             len = scheduleMoonlitMasqueradeBar(musicBar, musicNext);
+        else if (context.theme === 'great-yarn-tangle')
+            len = scheduleYarnTangleBar(musicBar, musicNext);
+        else if (context.theme === 'turtleback-world')
+            len = scheduleTurtlebackBar(musicBar, musicNext);
+        else if (context.theme === 'cat-lockup-expedition')
+            len = scheduleCatLockupBar(musicBar, musicNext);
+        else
+            len = scheduleAquariumBar(musicBar, musicNext);
         const chapter = context.chapter;
         if (!isFestival(context.theme))
             scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
@@ -2017,6 +2235,7 @@ function updateMusic(context) {
             const chapterNote = {
                 winter: 74, spring: 79, summer: 81, autumn: 76,
                 'starlight-eve': 87, 'great-egg-hunt': 90, 'fireworks-fair': 88, 'moonlit-masquerade': 75,
+                'great-yarn-tangle': 79, 'turtleback-world': 81, 'cat-lockup-expedition': 76, 'moonlit-aquarium': 74,
             };
             scheduleChime(chapterNote[context.theme] + chapter * 2, musicNext + len * 0.15, 0.34, 0.006);
             musicChapterBand = chapter;
@@ -2123,7 +2342,7 @@ function drawSceneGround(art) {
     const layerHeight = Math.max(270, height * art.groundHeight);
     // Align the painted center walking surface with Zima's world-space feet.
     drawCoverImage(art.ground, 0, groundY - layerHeight * art.groundSurface, width, layerHeight, 1, art.groundSurface);
-    if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')
+    if (!isNewWorld(selectedTheme) && (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring'))
         drawGroundCutouts(groundY, false);
 }
 function drawGroundCutouts(groundY, inFront) {
@@ -2202,7 +2421,7 @@ function drawSceneFront(art) {
     if (top > height || top + layerHeight < 0)
         return;
     ctx.drawImage(groundFrontImage(art), 0, top);
-    if (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring')
+    if (!isNewWorld(selectedTheme) && (baseSeason(selectedTheme) === 'winter' || baseSeason(selectedTheme) === 'spring'))
         drawGroundCutouts(groundY, true);
 }
 function drawSceneProp(art) {
@@ -2403,6 +2622,10 @@ function expeditionGoalName(stage = expeditionStage) {
         'great-egg-hunt': ['Cross Garden Heights', 'Cross Cloud Blossoms', 'Reach Conservatory Crown'],
         'fireworks-fair': ['Cross Festival Pier', 'Cross Firework Sky', 'Reach Coastal Crown'],
         'moonlit-masquerade': ['Cross Oak Canopy', 'Cross Lantern Sky', 'Reach Moonlit Crown'],
+        'great-yarn-tangle': ['Cross Skein Village', 'Cross Woven Heights', 'Reach Starry Loom'],
+        'turtleback-world': ['Cross Mossy Riverbank', 'Cross Shell Hills', 'Reach Turtle Horizon'],
+        'cat-lockup-expedition': ['Cross Quiet Corridors', 'Cross Open Watchtower', 'Reach Freedom Gate'],
+        'moonlit-aquarium': ['Cross Sunken Ruins', 'Cross Coral Gallery', 'Reach Moonlit Rim'],
     };
     return names[selectedTheme][Math.min(2, stage)];
 }
@@ -2412,6 +2635,10 @@ function advanceExpedition() {
     const goals = expeditionGoals();
     while (expeditionStage < goals.length && highestY >= goals[expeditionStage]) {
         expeditionStage++;
+        if (expeditionStage < 3)
+            incrementAchievement('camps');
+        else
+            incrementAchievement('summits');
         rewardExpeditionStage(expeditionStage);
         if (expeditionStage <= 2)
             expeditionCheckpointY = goals[expeditionStage - 1];
@@ -2466,6 +2693,7 @@ function finishExpedition() {
 }
 function settleZenGround() {
     state = 'zenGrounded';
+    incrementAchievement('zen');
     cat.y = GROUND_Y;
     cat.prevY = GROUND_Y;
     cat.vy = 0;
@@ -2494,6 +2722,8 @@ function registerBellHit(bell, fromBelow) {
     bell.lastHit = elapsed;
     bellCount++;
     bounceChain++;
+    incrementAchievement('bells');
+    observeAchievement('chain', bounceChain);
     const chainBoost = Math.min(165, bounceChain * 7);
     const nextBell = bells.find(b => b.id > bell.id && !b.touched);
     const top = bellTop(bell);
@@ -2620,6 +2850,7 @@ function checkMoths() {
             moth.alive = false;
             descentBlend = 0;
             mothCount++;
+            incrementAchievement('airborne');
             rewardBirdCatch();
             awardPoints(tierPoints(moth.kind));
             multiplier = Math.min(20, multiplier + 1);
@@ -4308,6 +4539,115 @@ function drawFallbackCat(x, y, vx, vy) {
     ctx.stroke();
     ctx.restore();
 }
+const kittenFrameCache = new Map();
+function cleanKittenFrame(image, frame) {
+    const key = `${image.src}:${frame}`;
+    const cached = kittenFrameCache.get(key);
+    if (cached)
+        return cached;
+    const cellWidth = image.naturalWidth / 4, cellHeight = image.naturalHeight / 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(cellWidth + 52);
+    canvas.height = Math.floor(cellHeight + 82);
+    const paint = canvas.getContext('2d', { willReadFrequently: true });
+    // Several kittens extend a muzzle or paw into the next atlas cell. Read a
+    // small overlap, then keep only the connected silhouette of this pose.
+    const left = frame % 4 * cellWidth + 4;
+    const top = Math.max(0, Math.floor(frame / 4) * cellHeight - 60);
+    const sourceWidth = Math.min(cellWidth + 52, image.naturalWidth - left);
+    const sourceHeight = Math.min(cellHeight + 82, image.naturalHeight - top);
+    paint.drawImage(image, left, top, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+    const pixels = paint.getImageData(0, 0, canvas.width, canvas.height);
+    for (let i = 3; i < pixels.data.length; i += 4)
+        if (pixels.data[i] < 80)
+            pixels.data[i] = 0;
+    // Retain the connected kitten silhouette. A few source poses spill a paw
+    // from the following atlas cell into this one; those islands are separate
+    // from the actual cat and must not flash during animation.
+    const count = canvas.width * canvas.height;
+    const seen = new Uint8Array(count);
+    const queue = new Int32Array(count);
+    let largest = [];
+    for (let start = 0; start < count; start++) {
+        if (seen[start] || pixels.data[start * 4 + 3] === 0)
+            continue;
+        const component = [];
+        let head = 0, tail = 1;
+        queue[0] = start;
+        seen[start] = 1;
+        while (head < tail) {
+            const point = queue[head++];
+            component.push(point);
+            const px = point % canvas.width, py = Math.floor(point / canvas.width);
+            const neighbors = [px > 0 ? point - 1 : -1, px + 1 < canvas.width ? point + 1 : -1,
+                py > 0 ? point - canvas.width : -1, py + 1 < canvas.height ? point + canvas.width : -1];
+            for (const next of neighbors)
+                if (next >= 0 && !seen[next] && pixels.data[next * 4 + 3] > 0) {
+                    seen[next] = 1;
+                    queue[tail++] = next;
+                }
+        }
+        if (component.length > largest.length)
+            largest = component;
+    }
+    const keep = new Uint8Array(count);
+    for (const point of largest)
+        keep[point] = 1;
+    for (let point = 0; point < count; point++)
+        if (!keep[point])
+            pixels.data[point * 4 + 3] = 0;
+    paint.putImageData(pixels, 0, 0);
+    kittenFrameCache.set(key, canvas);
+    return canvas;
+}
+function drawKittenFrame(x, y, vx, vy, grounded) {
+    const useAir = animState === 'launch' || animState === 'rise' || animState === 'apex'
+        || animState === 'fall' || animState === 'undersideContact' || animState === 'boostContact'
+        || animState === 'land';
+    const image = useAir ? kittenAirArt[selectedCharacter] : kittenPoseArt[selectedCharacter];
+    if (!image.complete || !image.naturalWidth)
+        return;
+    const idleFrame = Math.floor(elapsed * 5) % 4;
+    const walkFrame = Math.floor(groundTravel / 9) % 4;
+    let frame;
+    if (state === 'title' || state === 'ready' && animState !== 'walk' && animState !== 'crouch')
+        frame = idleFrame;
+    else if (animState === 'walk')
+        frame = 4 + walkFrame;
+    else if (animState === 'crouch')
+        frame = 8 + Math.floor(animStateTime * 9) % 2;
+    else if (animState === 'launch')
+        frame = Math.min(3, Math.floor(animStateTime * 22));
+    else if (animState === 'rise')
+        frame = 4 + Math.min(3, Math.max(0, Math.floor((620 - cat.vy) / 150)));
+    else if (animState === 'apex')
+        frame = 7;
+    else if (animState === 'fall')
+        frame = 8 + Math.floor(animStateTime * 11) % 4;
+    else if (animState === 'land')
+        frame = 12;
+    else if (animState === 'groundLand')
+        frame = 15;
+    else if (animState === 'boostContact')
+        frame = 14;
+    else if (animState === 'undersideContact')
+        frame = lastBellContactDirection === 'side' ? 12 : 13;
+    else
+        frame = grounded ? idleFrame : 11;
+    const sprite = cleanKittenFrame(image, frame);
+    const paintedSize = 96;
+    const anchor = grounded ? 0.94 : 0.72;
+    const tilt = grounded ? 0 : Math.max(-0.13, Math.min(0.13, vx / 2500))
+        + Math.max(-0.08, Math.min(0.08, -vy / 6500));
+    const turnProgress = turnTime / TURN_DURATION;
+    const facing = grounded && turnProgress < 0.5 ? turnFrom : cat.facing;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.scale(facing, 1);
+    ctx.drawImage(sprite, -paintedSize / 2, -paintedSize * anchor, paintedSize, paintedSize);
+    ctx.restore();
+}
 function drawCat(x, y, vx, vy) {
     const grounded = state === 'title' || state === 'ready' || state === 'zenGrounded' || state === 'expeditionCheckpoint' || animState === 'groundLand' || (animState === 'land' && bounceHold > 0);
     if (grounded) {
@@ -4316,6 +4656,10 @@ function drawCat(x, y, vx, vy) {
         const alpha = baseSeason(selectedTheme) === 'winter' ? 0.30 : baseSeason(selectedTheme) === 'spring' ? 0.25 : baseSeason(selectedTheme) === 'summer' ? 0.27 : 0.28;
         drawShadow(25 + Math.abs(vx) * 0.012, alpha, 4);
         ctx.restore();
+    }
+    if (selectedForm === 'kitten' && kittenPoseArt[selectedCharacter].naturalWidth) {
+        drawKittenFrame(x, y, vx, vy, grounded);
+        return;
     }
     if (spriteImage.complete && spriteImage.naturalWidth > 0) {
         drawSpriteFrame(x, y, cat.facing, vx, vy);
@@ -4366,13 +4710,13 @@ function drawHUD() {
     const scoreW = compact ? (panelW - 42) / 2 : expedition ? (panelW - 40) * .28 : (panelW - 40) * .34;
     const bestW = compact ? scoreW : scoreW;
     const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length, decimalLines(bestForMode(), bestFont, bestW - 8).length);
-    const panelH = (compact ? expedition ? 137 : 117 : 84) + Math.max(0, lineCount - 1) * 19;
-    ctx.fillStyle = 'rgba(4,18,30,.94)';
+    const panelH = (compact ? expedition ? 121 : 101 : 69) + Math.max(0, lineCount - 1) * 19;
+    ctx.fillStyle = 'rgba(4,18,30,.72)';
     ctx.beginPath();
-    ctx.roundRect(panelX, panelY, panelW, panelH, 15);
+    ctx.roundRect(panelX, panelY, panelW, panelH, 12);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.30)';
-    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = 'rgba(255,255,255,.16)';
+    ctx.lineWidth = 1;
     ctx.stroke();
     const firstX = panelX + 15;
     const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
@@ -4388,12 +4732,12 @@ function drawHUD() {
     if (compact) {
         ctx.fillStyle = '#eaf7ff';
         ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-        ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 24, panelW - 30);
+        ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 8, panelW - 30);
         if (expedition) {
             const goals = expeditionGoals();
             const target = goals[Math.min(2, expeditionStage)];
             ctx.fillStyle = themeMeta().accent;
-            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 44, panelW - 30);
+            ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 28, panelW - 30);
         }
     }
     else {
@@ -4755,6 +5099,10 @@ function drawExpeditionComplete() {
         'great-egg-hunt': `${CHARACTER_META[selectedCharacter].name} reaches the Conservatory Crown beyond the clouds.`,
         'fireworks-fair': `${CHARACTER_META[selectedCharacter].name} reaches the Coastal Crown above the fair.`,
         'moonlit-masquerade': `${CHARACTER_META[selectedCharacter].name} reaches the Moonlit Crown beyond the oak.`,
+        'great-yarn-tangle': `${CHARACTER_META[selectedCharacter].name} reaches the Starry Loom.`,
+        'turtleback-world': `${CHARACTER_META[selectedCharacter].name} sees the great turtle and the horizon.`,
+        'cat-lockup-expedition': `${CHARACTER_META[selectedCharacter].name} reaches the Freedom Gate.`,
+        'moonlit-aquarium': `${CHARACTER_META[selectedCharacter].name} reaches the moonlit aquarium rim.`,
     };
     ctx.fillStyle = themeMeta().accent;
     ctx.font = '600 15px ui-rounded, system-ui, sans-serif';
@@ -4929,6 +5277,153 @@ function drawScoreboard() {
     ctx.fillText(`PAGE ${scoreboardPage + 1} / ${scoreboardPageCount}  ·  L CLOSE  ·  ↑/↓ PAGE  ·  ←/→ MODE`, width / 2, y + h - 23, w - 155);
     ctx.restore();
 }
+const ACHIEVEMENTS = [
+    { id: 'bells', title: 'Bell Ringer', detail: 'Bells struck', targets: [25, 250, 1500] },
+    { id: 'chain', title: 'One Long Song', detail: 'Bells in one launch', targets: [3, 6, 12] },
+    { id: 'score', title: 'Sky Star', detail: 'Best run score', targets: [10000, 100000, 1000000] },
+    { id: 'height', title: 'Cloud Climber', detail: 'Highest altitude', targets: [1000, 14000, 42000] },
+    { id: 'airborne', title: 'Airborne Friends', detail: 'Airborne catches', targets: [5, 50, 250] },
+    { id: 'crates', title: 'Curious Paws', detail: 'Mystery crates opened', targets: [1, 10, 50] },
+    { id: 'cats', title: 'Cat Company', detail: 'Different cats played', targets: [2, 3, 4] },
+    { id: 'fish', title: 'Fish Finder', detail: 'Fish earned', targets: [25, 250, 1000] },
+    { id: 'wallet', title: 'Fish Keeper', detail: 'Most fish held', targets: [25, 100, 500] },
+    { id: 'runs', title: 'Nine Lives', detail: 'Runs started', targets: [1, 25, 100] },
+    { id: 'yarn', title: 'Yarn Explorer', detail: 'Yarn Tangle runs', targets: [1, 10, 50] },
+    { id: 'turtle', title: 'Turtleback Traveler', detail: 'Turtleback runs', targets: [1, 10, 50] },
+    { id: 'lockup', title: 'Freedom Finder', detail: 'Cat Lockup runs', targets: [1, 10, 50] },
+    { id: 'aquarium', title: 'Moonlit Diver', detail: 'Aquarium runs', targets: [1, 10, 50] },
+    { id: 'worlds', title: 'World Collector', detail: 'Worlds unlocked with fish', targets: [1, 4, 8] },
+    { id: 'winter', title: 'Snow Walker', detail: 'Winter runs', targets: [1, 10, 50] },
+    { id: 'spring', title: 'Blossom Walker', detail: 'Spring runs', targets: [1, 10, 50] },
+    { id: 'summer', title: 'Sun Walker', detail: 'Summer runs', targets: [1, 10, 50] },
+    { id: 'autumn', title: 'Leaf Walker', detail: 'Autumn runs', targets: [1, 10, 50] },
+    { id: 'launches', title: 'Constellation Trail', detail: 'Launches', targets: [10, 100, 500] },
+    { id: 'gear', title: 'Well Equipped', detail: 'Permanent gear owned', targets: [1, 3, 6] },
+    { id: 'zen', title: 'Soft Landing', detail: 'Safe Zen landings', targets: [1, 25, 100] },
+    { id: 'camps', title: 'Camp Light', detail: 'Expedition camps reached', targets: [1, 10, 50] },
+    { id: 'modes', title: 'Many Paths', detail: 'Different modes played', targets: [1, 2, 3] },
+    { id: 'summits', title: 'Summit Crown', detail: 'Expeditions finished', targets: [1, 5, 25] },
+];
+const ACHIEVEMENT_KEY = 'cats-changing-sky-achievements-v1';
+function loadAchievements() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(ACHIEVEMENT_KEY) || 'null');
+        if (!raw || raw.version !== 1 || typeof raw.values !== 'object' || raw.values === null)
+            throw Error('No achievement save');
+        const values = {};
+        for (const def of ACHIEVEMENTS) {
+            const value = raw.values[def.id];
+            values[def.id] = Number.isSafeInteger(value) && value >= 0 ? value : 0;
+        }
+        return { version: 1, values, seenCats: Array.isArray(raw.seenCats) ? raw.seenCats.filter((id) => typeof id === 'string') : [],
+            seenModes: Array.isArray(raw.seenModes) ? raw.seenModes.filter((id) => typeof id === 'string') : [] };
+    }
+    catch {
+        return { version: 1, values: {}, seenCats: [], seenModes: [] };
+    }
+}
+const achievements = loadAchievements();
+const achievementQueue = [];
+let achievementShowing = false;
+const TIER_NAMES = ['Locked', 'Bronze', 'Silver', 'Gold'];
+// The painted atlas places the cloud/runs, bird, cat, crate, fish, and wallet
+// panels in a different order from the tracking definitions.
+const ACHIEVEMENT_ICON_INDEX = [0, 1, 2, 3, 5, 7, 6, 8, 9, 4,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+function achievementIconPosition(index) {
+    const cell = ACHIEVEMENT_ICON_INDEX[index];
+    return `${(cell % 5) * 25}% ${Math.floor(cell / 5) * 25}%`;
+}
+function achievementTier(def, value) {
+    return value >= def.targets[2] ? 3 : value >= def.targets[1] ? 2 : value >= def.targets[0] ? 1 : 0;
+}
+function showNextAchievement() {
+    const next = achievementQueue.shift();
+    const toast = document.querySelector('#achievement-toast');
+    if (!next || !toast) {
+        achievementShowing = false;
+        return;
+    }
+    achievementShowing = true;
+    toast.replaceChildren();
+    const icon = document.createElement('span');
+    icon.className = 'achievement-icon';
+    icon.style.backgroundPosition = achievementIconPosition(next.index);
+    const label = document.createElement('span');
+    label.textContent = `${TIER_NAMES[next.tier]} achievement: ${next.title}`;
+    toast.append(icon, label);
+    toast.dataset.tier = TIER_NAMES[next.tier].toLowerCase();
+    toast.hidden = false;
+    requestAnimationFrame(() => toast.classList.add('show'));
+    window.setTimeout(() => {
+        toast.classList.remove('show');
+        window.setTimeout(() => { toast.hidden = true; showNextAchievement(); }, 450);
+    }, 3600);
+}
+function observeAchievement(id, value) {
+    if (typeof runDebugged !== 'undefined' && runDebugged)
+        return;
+    const index = ACHIEVEMENTS.findIndex(def => def.id === id);
+    if (index < 0 || !Number.isFinite(value))
+        return;
+    const def = ACHIEVEMENTS[index];
+    const previous = achievements.values[id] || 0;
+    const next = Math.max(previous, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
+    if (next === previous)
+        return;
+    achievements.values[id] = next;
+    try {
+        localStorage.setItem(ACHIEVEMENT_KEY, JSON.stringify(achievements));
+    }
+    catch (error) {
+        console.warn('Achievements could not be saved.', error);
+    }
+    const oldTier = achievementTier(def, previous), newTier = achievementTier(def, next);
+    for (let tier = oldTier + 1; tier <= newTier; tier++)
+        achievementQueue.push({ title: def.title, tier: tier, index });
+    if (!achievementShowing)
+        showNextAchievement();
+}
+function incrementAchievement(id, amount = 1) {
+    observeAchievement(id, (achievements.values[id] || 0) + amount);
+}
+function noteAchievementChoice(kind, value) {
+    if (typeof runDebugged !== 'undefined' && runDebugged)
+        return;
+    const seen = kind === 'cats' ? achievements.seenCats : achievements.seenModes;
+    if (seen.includes(value))
+        return;
+    seen.push(value);
+    observeAchievement(kind, seen.length);
+}
+function renderAchievements() {
+    const list = document.querySelector('#achievement-list');
+    if (!list)
+        return;
+    list.replaceChildren();
+    ACHIEVEMENTS.forEach((def, index) => {
+        const value = achievements.values[def.id] || 0;
+        const tier = achievementTier(def, value);
+        const card = document.createElement('article');
+        card.className = 'achievement-card';
+        card.dataset.tier = TIER_NAMES[tier].toLowerCase();
+        const icon = document.createElement('span');
+        icon.className = 'achievement-icon';
+        icon.style.backgroundPosition = achievementIconPosition(index);
+        const body = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = def.title;
+        const detail = document.createElement('span');
+        detail.textContent = `${def.detail} · ${value.toLocaleString()}`;
+        const next = document.createElement('small');
+        next.textContent = tier === 3 ? 'Gold complete' : `Next: ${TIER_NAMES[tier + 1]} at ${def.targets[tier].toLocaleString()}`;
+        body.append(title, detail, next);
+        const badge = document.createElement('b');
+        badge.textContent = TIER_NAMES[tier];
+        card.append(icon, body, badge);
+        list.append(card);
+    });
+}
 /// <reference path="./chapters.ts" />
 /// <reference path="./progression.ts" />
 /// <reference path="./progression-ui.ts" />
@@ -4939,10 +5434,13 @@ function drawScoreboard() {
 /// <reference path="./target-render.ts" />
 /// <reference path="./character-render.ts" />
 /// <reference path="./hud-render.ts" />
+/// <reference path="./achievements.ts" />
 const canvas = document.querySelector('#game');
 const ctx = canvas.getContext('2d', { alpha: false });
 const menuOverlay = document.querySelector('#menu-overlay');
 const boardOverlay = document.querySelector('#board-overlay');
+const NEW_WORLD_ORDER = ['great-yarn-tangle', 'turtleback-world', 'cat-lockup-expedition', 'moonlit-aquarium'];
+function isNewWorld(theme) { return NEW_WORLD_ORDER.includes(theme); }
 const TAU = Math.PI * 2;
 const DPR_MAX = 2;
 const GROUND_Y = 0;
@@ -5058,16 +5556,20 @@ function seasonalScarfArt(image, key, frame) {
     }
     return result;
 }
-const FESTIVAL_ORDER = ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade'];
-const THEME_ORDER = ['winter', 'starlight-eve', 'spring', 'great-egg-hunt', 'summer', 'fireworks-fair', 'autumn', 'moonlit-masquerade'];
+const FESTIVAL_ORDER = ['starlight-eve', 'great-egg-hunt', 'fireworks-fair', 'moonlit-masquerade', ...NEW_WORLD_ORDER];
+const THEME_ORDER = ['winter', 'starlight-eve', 'spring', 'great-egg-hunt', 'summer', 'fireworks-fair', 'autumn', 'moonlit-masquerade', ...NEW_WORLD_ORDER];
 const FESTIVAL_BASE = {
     'starlight-eve': 'winter', 'great-egg-hunt': 'spring',
     'fireworks-fair': 'summer', 'moonlit-masquerade': 'autumn',
+    'great-yarn-tangle': 'spring', 'turtleback-world': 'summer',
+    'cat-lockup-expedition': 'autumn', 'moonlit-aquarium': 'winter',
 };
 function isFestival(theme) { return theme in FESTIVAL_BASE; }
 function baseSeason(theme) { return isFestival(theme) ? FESTIVAL_BASE[theme] : theme; }
 const FESTIVAL_COST = {
     'starlight-eve': 30, 'great-egg-hunt': 45, 'fireworks-fair': 60, 'moonlit-masquerade': 75,
+    'great-yarn-tangle': 90, 'turtleback-world': 105,
+    'cat-lockup-expedition': 120, 'moonlit-aquarium': 135,
 };
 const THEME_META = {
     winter: { label: 'Winter', subtitle: 'Moonlit snow and ringing bells', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Aurora Bird', accent: '#9fe8da', card: '#173c56' },
@@ -5078,6 +5580,10 @@ const THEME_META = {
     'great-egg-hunt': { label: 'Great Egg Hunt', subtitle: 'Terraced gardens and a cliffside conservatory', normal: 'Painted Egg', medium: 'Bloom Egg', strong: 'Golden Egg', airborne: 'Garden Butterfly', accent: '#f6a3b4', card: '#53705a' },
     'fireworks-fair': { label: 'Fireworks Fair', subtitle: 'A coastal pier under a summer festival sky', normal: 'Pinwheel', medium: 'Festival Wheel', strong: 'Radiant Wheel', airborne: 'Flying Fish', accent: '#ffc778', card: '#345a83' },
     'moonlit-masquerade': { label: 'Moonlit Masquerade', subtitle: 'Treehouses and lanterns above an autumn forest', normal: 'Lantern', medium: 'Moon Lantern', strong: 'Ghost Lantern', airborne: 'Friendly Bat', accent: '#e4a5d6', card: '#51395d' },
+    'great-yarn-tangle': { label: 'The Great Yarn Tangle', subtitle: 'A knitted world rising to a starry loom', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Dragonfly', accent: '#f3b6a6', card: '#874b68' },
+    'turtleback-world': { label: 'Turtleback World', subtitle: 'A tiny landscape on a giant turtle', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Swallow', accent: '#b6d39a', card: '#4e7a65' },
+    'cat-lockup-expedition': { label: 'Cat Lockup Expedition', subtitle: 'A warm rescue climb through old stone towers', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Crow', accent: '#ffd195', card: '#405479' },
+    'moonlit-aquarium': { label: 'Moonlit Aquarium', subtitle: 'An ocean within a moonlit room', normal: 'Bell', medium: 'Silver Bell', strong: 'Crystal Bell', airborne: 'Aurora Bird', accent: '#a7e5ee', card: '#2c587c' },
 };
 const CHARACTER_ORDER = ['zima', 'earl-grey', 'betty-davis', 'gracie-bell'];
 const CHARACTER_META = {
@@ -5086,6 +5592,20 @@ const CHARACTER_META = {
     'betty-davis': { name: 'Betty Davis', hint: 'Petite wanderer', portrait: 'assets/characters/betty-davis/idle.png' },
     'gracie-bell': { name: 'Gracie Bell', hint: 'Graceful climber', portrait: 'assets/characters/gracie-bell/idle.png' },
 };
+const kittenArt = {};
+const kittenPoseArt = {};
+const kittenAirArt = {};
+for (const character of CHARACTER_ORDER) {
+    const image = new Image();
+    image.src = `assets/characters/${character}/kitten.webp`;
+    kittenArt[character] = image;
+    const poses = new Image();
+    poses.src = `assets/characters/${character}/kitten-poses.webp`;
+    kittenPoseArt[character] = poses;
+    const air = new Image();
+    air.src = `assets/characters/${character}/kitten-air-poses.webp`;
+    kittenAirArt[character] = air;
+}
 const COMPANION_IDS = ['earl-grey', 'betty-davis', 'gracie-bell'];
 const COMPANION_POSES = ['idle', 'walk', 'rise', 'fall', 'contact', 'land'];
 const companionArt = {};
@@ -5231,6 +5751,10 @@ const SCENE_ASSET_PATHS = {
     'fireworks-fair': { sky: 'assets/themes/summer/sky.webp', far: 'assets/themes/summer/far.webp', mid: 'assets/themes/summer/mid.webp', near: 'assets/themes/summer/near.webp', ground: 'assets/themes/fireworks-fair/ground.png' },
     'moonlit-masquerade': { sky: 'assets/themes/autumn/sky.webp', far: 'assets/themes/autumn/far.webp', mid: 'assets/themes/autumn/mid.webp', near: 'assets/themes/autumn/near.webp', ground: 'assets/themes/moonlit-masquerade/ground.png' },
 };
+for (const theme of NEW_WORLD_ORDER)
+    SCENE_ASSET_PATHS[theme] = {
+        ...SCENE_ASSET_PATHS[baseSeason(theme)], ground: `assets/themes/${theme}/ground.webp`, prop: undefined,
+    };
 const SCENE_LAYOUT = {
     winter: { far: [0.15, 0.76], mid: [0.36, 0.62], near: [0.18, 0.70], groundSurface: 0.75 },
     spring: { far: [0.15, 0.75], mid: [0.32, 0.65], near: [0.00, 0.90], groundSurface: 0.70 },
@@ -5241,6 +5765,12 @@ const SCENE_LAYOUT = {
     'fireworks-fair': { far: [0.15, 0.75], mid: [0.34, 0.64], near: [0.10, 0.80], groundSurface: 0.69 },
     'moonlit-masquerade': { far: [0.15, 0.75], mid: [0.18, 0.78], near: [0.00, 0.90], groundSurface: 0.70 },
 };
+for (const theme of NEW_WORLD_ORDER)
+    SCENE_LAYOUT[theme] = SCENE_LAYOUT[baseSeason(theme)];
+SCENE_LAYOUT['great-yarn-tangle'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.14 };
+SCENE_LAYOUT['turtleback-world'] = { ...SCENE_LAYOUT.spring, groundSurface: 0.025 };
+SCENE_LAYOUT['cat-lockup-expedition'] = { ...SCENE_LAYOUT.autumn, groundSurface: 0.11 };
+SCENE_LAYOUT['moonlit-aquarium'] = { ...SCENE_LAYOUT.winter, groundSurface: 0.37 };
 const sceneAssets = {};
 const sceneAssetState = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle']));
 let groundFrontCache = null;
@@ -5358,6 +5888,12 @@ const OBJECT_BOUNDS = {
     'fireworks-fair': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
     'moonlit-masquerade': [{ x: 0, y: 0, w: 683, h: 768 }, { x: 683, y: 0, w: 682, h: 768 }, { x: 1365, y: 0, w: 683, h: 768 }],
 };
+for (const theme of NEW_WORLD_ORDER)
+    OBJECT_BOUNDS[theme] = [
+        { x: 0, y: 0, w: 724, h: 724 },
+        { x: 724, y: 0, w: 724, h: 724 },
+        { x: 1448, y: 0, w: 724, h: 724 },
+    ];
 const INTERACTION_ASSET_PATHS = {
     winter: { objects: 'assets/themes/winter/objects-atlas.webp', airborne: 'assets/themes/winter/airborne-atlas.webp' },
     spring: { objects: 'assets/themes/spring/objects-atlas.webp', airborne: 'assets/themes/spring/airborne-atlas.webp' },
@@ -5368,6 +5904,10 @@ const INTERACTION_ASSET_PATHS = {
     'fireworks-fair': { objects: 'assets/themes/fireworks-fair/targets.png', airborne: 'assets/themes/fireworks-fair/visitor.png' },
     'moonlit-masquerade': { objects: 'assets/themes/moonlit-masquerade/targets.png', airborne: 'assets/themes/moonlit-masquerade/visitor.png' },
 };
+for (const theme of NEW_WORLD_ORDER)
+    INTERACTION_ASSET_PATHS[theme] = {
+        objects: `assets/themes/${theme}/targets.webp`, airborne: `assets/themes/${theme}/visitor.webp`,
+    };
 const interactionAssets = {};
 const interactionAssetState = Object.fromEntries(THEME_ORDER.map(theme => [theme, 'idle']));
 function loadInteractionAssets(theme) {
@@ -5402,7 +5942,9 @@ function selectedArtLoading() {
     return interactionAssetState[selectedTheme] === 'loading' || sceneAssetState[selectedTheme] === 'loading'
         || continuousState[selectedTheme] === 'loading'
         || upperRealmArt[selectedTheme].state === 'loading'
-        || (selectedCharacter !== 'zima' && companionArtState[selectedCharacter] === 'loading');
+        || (selectedForm === 'kitten' ? !kittenArt[selectedCharacter].complete || !kittenPoseArt[selectedCharacter].complete
+            || !kittenAirArt[selectedCharacter].complete
+            : selectedCharacter !== 'zima' && companionArtState[selectedCharacter] === 'loading');
 }
 function atlasFrame(index) {
     const packed = CLEAN_FRAME_INDEX.get(index);
@@ -5499,6 +6041,7 @@ const savedCharacter = localStorage.getItem('zima-skybells-character');
 let selectedTheme = THEME_ORDER.includes(savedTheme) && festivalUnlocked(savedTheme) ? savedTheme : 'winter';
 let selectedMode = savedMode === 'zen' || savedMode === 'expedition' ? savedMode : 'classic';
 let selectedCharacter = CHARACTER_ORDER.includes(savedCharacter) ? savedCharacter : 'zima';
+let selectedForm = localStorage.getItem('zima-skybells-form') === 'kitten' && kittenUnlocked(selectedCharacter) ? 'kitten' : 'adult';
 loadSelectedThemeArt(selectedTheme);
 let themeCardRects = [];
 let modeCardRects = [];
@@ -5538,7 +6081,7 @@ let scoreHistory = (() => {
                     equipped: r.equipped === true,
                     bounces: r.bounces, multiplier: r.multiplier,
                     retries: Number.isSafeInteger(r.retries) ? r.retries : undefined, theme: r.theme, mode: r.mode,
-                    cat: CHARACTER_ORDER.includes(r.cat) ? r.cat : 'zima',
+                    cat: CHARACTER_ORDER.includes(r.cat) ? r.cat : 'zima', kitten: r.kitten === true,
                     at: Number.isFinite(r.at) ? r.at : 0 }];
         }) : [];
     }
@@ -5573,6 +6116,18 @@ function closeScoreboard() {
 let lastMenuUi = '';
 let lastBoardUi = '';
 let lastHotbarContext = '';
+let worldCarouselStart = 0;
+const WORLDS_PER_PAGE = 3;
+function syncWorldCarousel() {
+    const cards = Array.from(document.querySelectorAll('#season-options [data-season]'));
+    cards.forEach((card, index) => { card.hidden = index < worldCarouselStart || index >= worldCarouselStart + WORLDS_PER_PAGE; });
+    const prev = document.querySelector('#world-prev');
+    const next = document.querySelector('#world-next');
+    if (prev)
+        prev.disabled = worldCarouselStart === 0;
+    if (next)
+        next.disabled = worldCarouselStart >= THEME_ORDER.length - WORLDS_PER_PAGE;
+}
 function syncDomUi() {
     const devControls = document.querySelector('#dev-controls');
     if (devControls)
@@ -5595,7 +6150,7 @@ function syncDomUi() {
     }
     if (menuOverlay) {
         menuOverlay.hidden = state !== 'title' || scoreboardOpen;
-        const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${bestForMode()}|${selectedArtLoading()}|${progress.fish}|${progress.unlockedFestivals.join(',')}|${devMode}`;
+        const signature = `${selectedTheme}|${selectedMode}|${selectedCharacter}|${selectedForm}|${bestForMode()}|${selectedArtLoading()}|${progress.fish}|${progress.unlockedFestivals.join(',')}|${progress.unlockedKittens.join(',')}|${devMode}`;
         if (signature !== lastMenuUi) {
             lastMenuUi = signature;
             menuOverlay.style.setProperty('--accent', themeMeta().accent);
@@ -5605,22 +6160,36 @@ function syncDomUi() {
                 button.setAttribute('aria-pressed', String(theme === selectedTheme));
                 button.classList.toggle('locked', locked);
                 button.setAttribute('aria-label', locked ? `${THEME_META[theme].label}. Unlock for ${FESTIVAL_COST[theme]} fish.` : THEME_META[theme].label);
-                const hint = button.querySelector('small');
-                if (hint)
-                    hint.textContent = locked ? `Unlock: ${FESTIVAL_COST[theme]} fish` : `${THEME_META[theme].normal} / ${THEME_META[theme].airborne}`;
+                const price = button.querySelector('.world-price');
+                if (price)
+                    price.textContent = locked ? `${FESTIVAL_COST[theme]} fish` : 'Unlocked';
             });
             menuOverlay.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === selectedMode)));
-            menuOverlay.querySelectorAll('[data-character]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.character === selectedCharacter)));
+            menuOverlay.querySelectorAll('[data-character]').forEach(button => {
+                const character = button.dataset.character;
+                const kitten = button.dataset.form === 'kitten';
+                const locked = kitten && !kittenUnlocked(character);
+                button.setAttribute('aria-pressed', String(character === selectedCharacter && (kitten ? 'kitten' : 'adult') === selectedForm));
+                button.classList.toggle('locked', locked);
+                const hint = button.querySelector('small');
+                if (hint && kitten)
+                    hint.textContent = locked ? `${KITTEN_COST[character]} fish` : 'Unlocked';
+            });
             const desc = menuOverlay.querySelector('#menu-description');
             if (desc)
-                desc.textContent = `${CHARACTER_META[selectedCharacter].name} explores ${themeMeta().subtitle.toLowerCase()}. ${selectedMode === 'expedition' ? 'Reach the summit through two base camps.' : selectedMode === 'zen' ? 'Land safely and launch again with your score.' : 'Keep the chain alive for your best climb.'}`;
+                desc.textContent = `${selectedForm === 'kitten' ? 'Kitten ' : ''}${CHARACTER_META[selectedCharacter].name} explores ${themeMeta().subtitle.toLowerCase()}. ${selectedMode === 'expedition' ? 'Reach the summit through two base camps.' : selectedMode === 'zen' ? 'Land safely and launch again with your score.' : 'Keep the chain alive for your best climb.'}`;
             const best = menuOverlay.querySelector('#menu-best');
             if (best)
                 best.textContent = `${selectedMode.toUpperCase()} best: ${formatScore(bestForMode())}`;
             const start = menuOverlay.querySelector('#start-game');
             if (start) {
-                const unavailable = selectedCharacter !== 'zima' && companionArtState[selectedCharacter] === 'failed';
-                start.disabled = selectedArtLoading() || unavailable;
+                const unavailable = selectedForm === 'kitten' ? (kittenArt[selectedCharacter].complete && !kittenArt[selectedCharacter].naturalWidth)
+                    || (kittenPoseArt[selectedCharacter].complete && !kittenPoseArt[selectedCharacter].naturalWidth)
+                    || (kittenAirArt[selectedCharacter].complete && !kittenAirArt[selectedCharacter].naturalWidth)
+                    : selectedCharacter !== 'zima' && companionArtState[selectedCharacter] === 'failed';
+                start.disabled = selectedArtLoading() || unavailable || (selectedForm === 'kitten'
+                    && (!kittenArt[selectedCharacter].naturalWidth || !kittenPoseArt[selectedCharacter].naturalWidth
+                        || !kittenAirArt[selectedCharacter].naturalWidth));
                 start.textContent = unavailable ? 'Cat art unavailable' : selectedArtLoading() ? 'Loading art…' : 'Start climb';
             }
         }
@@ -5662,7 +6231,7 @@ function syncDomUi() {
                     const item = document.createElement('li');
                     const meta = document.createElement('span');
                     meta.className = 'record-meta';
-                    meta.textContent = `#${index + 1} · ${run.equipped ? 'EQUIPPED' : 'STANDARD'} · ${CHARACTER_META[run.cat].name} · ${run.theme.toUpperCase()} · ${run.bounces} bounces · x${run.multiplier}${run.retries !== undefined ? ` · ${run.retries} retries` : ''}${run.approximate ? ' · approximate' : ''}`;
+                    meta.textContent = `#${index + 1} · ${run.equipped ? 'EQUIPPED' : 'STANDARD'} · ${run.kitten ? 'Kitten ' : ''}${CHARACTER_META[run.cat].name} · ${run.theme.toUpperCase()} · ${run.bounces} bounces · x${run.multiplier}${run.retries !== undefined ? ` · ${run.retries} retries` : ''}${run.approximate ? ' · approximate' : ''}`;
                     const value = document.createElement('span');
                     value.className = 'record-score';
                     value.textContent = formatScore(run.score);
@@ -5693,7 +6262,8 @@ if (menuOverlay) {
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.character = character;
-        button.setAttribute('aria-pressed', String(character === selectedCharacter));
+        button.dataset.form = 'adult';
+        button.setAttribute('aria-pressed', String(character === selectedCharacter && selectedForm === 'adult'));
         button.setAttribute('aria-label', `Play as ${CHARACTER_META[character].name}`);
         const portrait = document.createElement('img');
         portrait.src = CHARACTER_META[character].portrait;
@@ -5703,7 +6273,25 @@ if (menuOverlay) {
         const hint = document.createElement('small');
         hint.textContent = CHARACTER_META[character].hint;
         button.append(portrait, name, hint);
-        button.addEventListener('click', () => setCharacter(character));
+        button.addEventListener('click', () => setCharacter(character, 'adult'));
+        characterOptions?.append(button);
+    }
+    for (const character of CHARACTER_ORDER) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.character = character;
+        button.dataset.form = 'kitten';
+        button.setAttribute('aria-pressed', String(character === selectedCharacter && selectedForm === 'kitten'));
+        button.setAttribute('aria-label', `Play as kitten ${CHARACTER_META[character].name}. ${KITTEN_COST[character]} fish to unlock.`);
+        const portrait = document.createElement('img');
+        portrait.src = `assets/characters/${character}/kitten.webp`;
+        portrait.alt = '';
+        const name = document.createElement('span');
+        name.textContent = `Kitten ${CHARACTER_META[character].name}`;
+        const hint = document.createElement('small');
+        hint.textContent = `${KITTEN_COST[character]} fish`;
+        button.append(portrait, name, hint);
+        button.addEventListener('click', () => setCharacter(character, 'kitten'));
         characterOptions?.append(button);
     }
     const seasonOptions = menuOverlay.querySelector('#season-options');
@@ -5712,14 +6300,33 @@ if (menuOverlay) {
         button.type = 'button';
         button.dataset.season = theme;
         button.setAttribute('aria-pressed', String(theme === selectedTheme));
+        const thumb = document.createElement('span');
+        thumb.className = 'world-thumb';
+        const image = document.createElement('img');
+        image.src = theme === 'winter' ? 'assets/themes/winter/winter-continuous-world-v1.png' : isFestival(theme)
+            ? `assets/themes/${theme}/world.${isNewWorld(theme) ? 'webp' : 'png'}` : `assets/themes/${theme}/${theme}-continuous-world-v1.png`;
+        image.alt = '';
+        image.loading = 'lazy';
+        const price = document.createElement('span');
+        price.className = 'world-price';
+        thumb.append(image, price);
         const name = document.createElement('span');
+        name.className = 'world-name';
         name.textContent = THEME_META[theme].label;
-        const hint = document.createElement('small');
-        hint.textContent = `${THEME_META[theme].normal} · ${THEME_META[theme].airborne}`;
-        button.append(name, hint);
+        button.append(thumb, name);
         button.addEventListener('click', () => chooseTheme(theme));
         seasonOptions?.append(button);
     }
+    worldCarouselStart = Math.min(Math.max(0, THEME_ORDER.indexOf(selectedTheme) - 1), Math.max(0, THEME_ORDER.length - WORLDS_PER_PAGE));
+    syncWorldCarousel();
+    menuOverlay.querySelector('#world-prev')?.addEventListener('click', () => {
+        worldCarouselStart = Math.max(0, worldCarouselStart - 1);
+        syncWorldCarousel();
+    });
+    menuOverlay.querySelector('#world-next')?.addEventListener('click', () => {
+        worldCarouselStart = Math.min(THEME_ORDER.length - WORLDS_PER_PAGE, worldCarouselStart + 1);
+        syncWorldCarousel();
+    });
     const modeOptions = menuOverlay.querySelector('#mode-options');
     const modeHints = { classic: 'Endless climb', zen: 'Safe landings', expedition: 'Summit quest' };
     for (const mode of GAME_MODES) {
@@ -5782,6 +6389,7 @@ function formatScore(value) { return value.toLocaleString('en-US'); }
 function tierPoints(kind) { return kind === 'crystal' ? 30 : kind === 'silver' ? 20 : 10; }
 function awardPoints(base) {
     score += BigInt(base) * BigInt(multiplier);
+    observeAchievement('score', Number(score > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : score));
 }
 const cat = {
     x: width / 2,
@@ -5868,13 +6476,26 @@ function setGameMode(mode) {
     selectedMode = mode;
     localStorage.setItem('zima-skybells-mode', mode);
 }
-function setCharacter(character) {
+function setCharacter(character, form) {
+    if (form === 'kitten' && !kittenUnlocked(character)) {
+        if (!unlockKitten(character)) {
+            const feedback = document.querySelector('#unlock-feedback');
+            if (feedback)
+                feedback.textContent = `Kitten ${CHARACTER_META[character].name} needs ${KITTEN_COST[character]} fish. You have ${progress.fish}.`;
+            return;
+        }
+        const feedback = document.querySelector('#unlock-feedback');
+        if (feedback)
+            feedback.textContent = `Kitten ${CHARACTER_META[character].name} unlocked!`;
+    }
     if (selectedCharacter !== character) {
         scarfArtCache.clear();
         companionTintCache.clear();
     }
     selectedCharacter = character;
+    selectedForm = form;
     localStorage.setItem('zima-skybells-character', character);
+    localStorage.setItem('zima-skybells-form', form);
 }
 function recordScore() {
     if (runDebugged || score <= 0n || bellCount <= 0)
@@ -5892,7 +6513,7 @@ function recordScore() {
     }
     scoreHistory.push({ score, equipped: runEquipped, bounces: bellCount, multiplier,
         retries: selectedMode === 'expedition' ? expeditionRetries : undefined,
-        theme: selectedTheme, mode: selectedMode, cat: selectedCharacter, at: Date.now() });
+        theme: selectedTheme, mode: selectedMode, cat: selectedCharacter, kitten: selectedForm === 'kitten', at: Date.now() });
     scoreHistory.sort((a, b) => a.score === b.score ? b.at - a.at : a.score > b.score ? -1 : 1);
     const recordCounts = new Map();
     scoreHistory = scoreHistory.filter(run => {
@@ -5987,13 +6608,24 @@ function rebuildBackdrop() {
         twinkle: Math.random() * TAU,
         alpha: Math.random() * 0.5 + 0.2,
     }));
-    const particleCount = Math.floor((width * height) / (baseSeason(selectedTheme) === 'spring' ? 5200 : baseSeason(selectedTheme) === 'autumn' ? 5600 : baseSeason(selectedTheme) === 'summer' ? 7200 : 6800));
+    const festivalMotion = {
+        'starlight-eve': { density: 10000, speed: 12, drift: 6 },
+        'great-egg-hunt': { density: 8000, speed: 37, drift: 18 },
+        'fireworks-fair': { density: 14000, speed: 52, drift: 3 },
+        'moonlit-masquerade': { density: 10500, speed: 17, drift: 10 },
+        'great-yarn-tangle': { density: 9000, speed: 21, drift: 25 },
+        'turtleback-world': { density: 12000, speed: 14, drift: 13 },
+        'cat-lockup-expedition': { density: 15000, speed: 26, drift: 9 },
+        'moonlit-aquarium': { density: 12500, speed: -24, drift: 6 },
+    };
+    const motion = festivalMotion[selectedTheme];
+    const particleCount = Math.floor((width * height) / (motion?.density ?? (baseSeason(selectedTheme) === 'spring' ? 5200 : baseSeason(selectedTheme) === 'autumn' ? 5600 : baseSeason(selectedTheme) === 'summer' ? 7200 : 6800)));
     snow = Array.from({ length: particleCount }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
         r: Math.random() * 2 + 0.8,
-        speed: baseSeason(selectedTheme) === 'winter' ? Math.random() * 26 + 14 : selectedTheme === 'great-egg-hunt' ? Math.random() * 45 + 28 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 120 + 90 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
-        drift: baseSeason(selectedTheme) === 'winter' ? Math.random() * 20 + 8 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 10 + 3 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
+        speed: motion ? motion.speed * (0.65 + Math.random() * 0.7) : baseSeason(selectedTheme) === 'winter' ? Math.random() * 26 + 14 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 120 + 90 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 18 + 8 : Math.random() * 60 + 34,
+        drift: motion ? motion.drift * (0.55 + Math.random() * 0.9) : baseSeason(selectedTheme) === 'winter' ? Math.random() * 20 + 8 : baseSeason(selectedTheme) === 'spring' ? Math.random() * 10 + 3 : baseSeason(selectedTheme) === 'summer' ? Math.random() * 30 + 12 : Math.random() * 38 + 16,
         phase: Math.random() * TAU,
         alpha: Math.random() * 0.45 + 0.18,
     }));
@@ -6056,6 +6688,19 @@ function resetGame() {
 function launchRun() {
     if (state !== 'ready' && state !== 'zenGrounded' && state !== 'expeditionCheckpoint')
         return;
+    incrementAchievement('launches');
+    if (state === 'ready') {
+        incrementAchievement('runs');
+        const worldTrack = {
+            winter: 'winter', spring: 'spring', summer: 'summer', autumn: 'autumn',
+            'great-yarn-tangle': 'yarn', 'turtleback-world': 'turtle',
+            'cat-lockup-expedition': 'lockup', 'moonlit-aquarium': 'aquarium',
+        };
+        if (worldTrack[selectedTheme])
+            incrementAchievement(worldTrack[selectedTheme]);
+        noteAchievementChoice('cats', selectedCharacter);
+        noteAchievementChoice('modes', selectedMode);
+    }
     beginLaunchProgress();
     state = 'playing';
     const firstBell = bells.find(b => !b.touched && bellTop(b) > cat.y + 70);
@@ -6096,7 +6741,11 @@ function addSeasonBurst(x, y, intensity = 1) {
         const speed = rand(55, 170) * intensity;
         let kind = 'spark';
         let color = '#ffffff';
-        if (baseSeason(selectedTheme) === 'winter') {
+        if (isFestival(selectedTheme)) {
+            kind = selectedTheme;
+            color = themeMeta().accent;
+        }
+        else if (baseSeason(selectedTheme) === 'winter') {
             kind = 'snow';
             color = i % 3 === 0 ? '#d8f5ff' : '#ffffff';
         }
@@ -6132,7 +6781,7 @@ function emitGroundStep() {
     groundMarks.push({ x, age: 0, life: baseSeason(selectedTheme) === 'winter' ? 4 : 2.6, side, theme: selectedTheme });
     if (groundMarks.length > 40)
         groundMarks.shift();
-    const kind = baseSeason(selectedTheme) === 'winter' ? 'snow' : baseSeason(selectedTheme) === 'spring' ? 'droplet' : baseSeason(selectedTheme) === 'summer' ? 'pollen' : 'leaf';
+    const kind = isFestival(selectedTheme) ? selectedTheme : baseSeason(selectedTheme) === 'winter' ? 'snow' : baseSeason(selectedTheme) === 'spring' ? 'droplet' : baseSeason(selectedTheme) === 'summer' ? 'pollen' : 'leaf';
     const color = baseSeason(selectedTheme) === 'winter' ? '#eaf7ff' : baseSeason(selectedTheme) === 'spring' ? '#a9e6bb' : baseSeason(selectedTheme) === 'summer' ? '#ffe39a' : '#eaa151';
     for (let i = 0; i < 3; i++)
         sparks.push({
@@ -6436,8 +7085,8 @@ function updateSnow(dt) {
             s.x -= 20 * dt;
         if (baseSeason(selectedTheme) === 'autumn')
             s.x += Math.sin(s.phase * 1.6) * 18 * dt;
-        if (s.y > height + 12 || s.x < -20 || s.x > width + 20) {
-            s.y = -12;
+        if ((s.speed < 0 ? s.y < -12 : s.y > height + 12) || s.x < -20 || s.x > width + 20) {
+            s.y = s.speed < 0 ? height + 12 : -12;
             s.x = Math.random() * width;
         }
     }
@@ -6682,6 +7331,100 @@ function drawLaunchPad(x, y) {
     }
     ctx.restore();
 }
+function drawFestivalParticle(theme, radius, phase) {
+    const r = Math.max(2, radius);
+    ctx.lineWidth = Math.max(0.9, r * 0.22);
+    if (theme === 'starlight-eve') {
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.8);
+        ctx.lineTo(r * 0.28, -r * 0.25);
+        ctx.lineTo(r * 1.5, 0);
+        ctx.lineTo(r * 0.28, r * 0.25);
+        ctx.lineTo(0, r * 1.8);
+        ctx.lineTo(-r * 0.28, r * 0.25);
+        ctx.lineTo(-r * 1.5, 0);
+        ctx.lineTo(-r * 0.28, -r * 0.25);
+        ctx.closePath();
+        ctx.fill();
+    }
+    else if (theme === 'great-egg-hunt') {
+        ctx.rotate(Math.sin(phase) * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.35);
+        ctx.bezierCurveTo(r * 1.4, -r, r * 1.2, r * 1.2, 0, r * 1.3);
+        ctx.bezierCurveTo(-r * 1.2, r * 1.2, -r * 1.4, -r, 0, -r * 1.35);
+        ctx.fill();
+        ctx.fillStyle = '#f8b6c9';
+        ctx.beginPath();
+        ctx.arc(-r * 0.3, r * 0.1, r * 0.2, 0, TAU);
+        ctx.fill();
+    }
+    else if (theme === 'fireworks-fair') {
+        for (let ray = 0; ray < 7; ray++) {
+            const angle = ray * TAU / 7 + phase * 0.4;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * r * 0.55, Math.sin(angle) * r * 0.55);
+            ctx.lineTo(Math.cos(angle) * r * 1.8, Math.sin(angle) * r * 1.8);
+            ctx.stroke();
+        }
+    }
+    else if (theme === 'moonlit-masquerade') {
+        ctx.beginPath();
+        ctx.moveTo(-r * 1.6, -r * 0.45);
+        ctx.quadraticCurveTo(0, -r * 1.2, r * 1.6, -r * 0.45);
+        ctx.quadraticCurveTo(r * 0.8, r * 1.1, 0, r * 0.55);
+        ctx.quadraticCurveTo(-r * 0.8, r * 1.1, -r * 1.6, -r * 0.45);
+        ctx.fill();
+        ctx.fillStyle = '#4c3a66';
+        for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.ellipse(side * r * 0.65, 0, r * 0.26, r * 0.16, 0, 0, TAU);
+            ctx.fill();
+        }
+    }
+    else if (theme === 'great-yarn-tangle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-r * 1.3, -r * 0.35);
+        ctx.quadraticCurveTo(0, -r * 1.2, r * 1.2, r * 0.3);
+        ctx.moveTo(-r, r * 0.45);
+        ctx.quadraticCurveTo(0, -r * 0.1, r * 1.4, r * 0.7);
+        ctx.stroke();
+    }
+    else if (theme === 'turtleback-world') {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-r, 0);
+        ctx.lineTo(r, 0);
+        ctx.moveTo(0, -r);
+        ctx.lineTo(0, r);
+        ctx.stroke();
+    }
+    else if (theme === 'cat-lockup-expedition') {
+        ctx.beginPath();
+        ctx.arc(-r * 0.55, -r * 0.7, r * 0.55, 0, TAU);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.2, -r * 0.3);
+        ctx.lineTo(r * 0.9, r * 0.95);
+        ctx.lineTo(r * 1.3, r * 0.55);
+        ctx.moveTo(r * 0.9, r * 0.95);
+        ctx.lineTo(r * 0.55, r * 1.35);
+        ctx.stroke();
+    }
+    else {
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.25, 0, TAU);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(-r * 0.4, -r * 0.4, r * 0.24, 0, TAU);
+        ctx.fill();
+    }
+}
 function drawEffects() {
     ctx.save();
     for (const s of sparks) {
@@ -6693,7 +7436,10 @@ function drawEffects() {
         ctx.strokeStyle = s.color;
         ctx.translate(s.x, sy);
         ctx.rotate(s.life * s.spin);
-        if (s.kind === 'snow') {
+        if (isFestival(s.kind)) {
+            drawFestivalParticle(s.kind, s.size, s.life);
+        }
+        else if (s.kind === 'snow') {
             ctx.lineWidth = 1.2;
             for (let i = 0; i < 3; i++) {
                 ctx.rotate(Math.PI / 3);
@@ -6750,29 +7496,19 @@ function drawSnow() {
     ctx.save();
     for (const s of snow) {
         ctx.globalAlpha = s.alpha;
-        if (selectedTheme === 'great-egg-hunt') {
-            ctx.fillStyle = Math.floor(s.phase * 3) % 3 === 0 ? '#fff1bd' : '#ffd0dd';
-            ctx.beginPath();
-            ctx.ellipse(s.x, s.y, s.r * 1.6, s.r * 0.8, s.phase, 0, TAU);
-            ctx.fill();
-        }
-        else if (selectedTheme === 'fireworks-fair') {
-            ctx.fillStyle = s.y > height * 0.65 ? '#c9edff' : '#ffe4a0';
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.r * 0.72, 0, TAU);
-            ctx.fill();
-        }
-        else if (selectedTheme === 'moonlit-masquerade' && Math.floor(s.phase * 3) % 4 === 0) {
-            ctx.fillStyle = '#ffd49d';
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.r * 0.9, 0, TAU);
-            ctx.fill();
-        }
-        else if (selectedTheme === 'starlight-eve' && Math.floor(s.phase * 3) % 6 === 0) {
-            ctx.fillStyle = cameraY < 16000 ? '#ffe4ac' : '#daedff';
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.r * 0.75, 0, TAU);
-            ctx.fill();
+        if (isFestival(selectedTheme)) {
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            ctx.rotate(selectedTheme === 'fireworks-fair' ? 0 : Math.sin(s.phase) * 0.22);
+            ctx.fillStyle = selectedTheme === 'great-egg-hunt' ? '#fff0bd'
+                : selectedTheme === 'moonlit-masquerade' ? '#efc79a'
+                    : selectedTheme === 'great-yarn-tangle' ? '#e7a49e'
+                        : selectedTheme === 'turtleback-world' ? '#e0e99c'
+                            : selectedTheme === 'cat-lockup-expedition' ? '#ffdc8d'
+                                : selectedTheme === 'moonlit-aquarium' ? '#c2edff' : themeMeta().accent;
+            ctx.strokeStyle = selectedTheme === 'moonlit-aquarium' ? '#c2edff' : ctx.fillStyle;
+            drawFestivalParticle(selectedTheme, s.r * (selectedTheme === 'cat-lockup-expedition' ? 2 : 1.4), s.phase);
+            ctx.restore();
         }
         else if (baseSeason(selectedTheme) === 'winter') {
             ctx.fillStyle = '#effbff';
@@ -6921,6 +7657,8 @@ window.addEventListener('keydown', e => {
         }
         if (!devMode && state === 'title' && !festivalUnlocked(selectedTheme))
             setTheme(baseSeason(selectedTheme));
+        if (!devMode && selectedForm === 'kitten' && !kittenUnlocked(selectedCharacter))
+            setCharacter(selectedCharacter, 'adult');
         if (state !== 'title')
             runDebugged = true;
         lastMenuUi = '';
@@ -6932,7 +7670,9 @@ window.addEventListener('keydown', e => {
     }
     if (e.code === 'Escape') {
         e.preventDefault();
-        if (scoreboardOpen)
+        if (document.querySelector('.dialog-overlay:not([hidden])'))
+            closeProgressDialogs();
+        else if (scoreboardOpen)
             closeScoreboard();
         else
             returnToTitle();

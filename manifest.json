@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Cats of the Changing Sky",
-  "version": "3.36.1",
-  "description": "Four cats climb eight painted worlds in Classic, Zen, and Expedition modes.",
+  "version": "3.37.1",
+  "description": "Four cats climb twelve painted worlds in Classic, Zen, and Expedition modes.",
   "permissions": ["storage"],
   "action": {
     "default_title": "Play Cats of the Changing Sky",
@@ -14,17 +14,7 @@
     }
   },
   "background": {
-    "scripts": ["background.js"],
     "service_worker": "background.js"
-  },
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "cats-of-the-changing-sky@psusedjem-blip",
-      "strict_min_version": "142.0",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
-    }
   },
   "icons": {
     "16": "icons/icon16.png",

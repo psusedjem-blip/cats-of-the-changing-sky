@@ -181,6 +181,10 @@ function expeditionGoalName(stage = expeditionStage): string {
     'great-egg-hunt': ['Cross Garden Heights', 'Cross Cloud Blossoms', 'Reach Conservatory Crown'],
     'fireworks-fair': ['Cross Festival Pier', 'Cross Firework Sky', 'Reach Coastal Crown'],
     'moonlit-masquerade': ['Cross Oak Canopy', 'Cross Lantern Sky', 'Reach Moonlit Crown'],
+    'great-yarn-tangle': ['Cross Skein Village', 'Cross Woven Heights', 'Reach Starry Loom'],
+    'turtleback-world': ['Cross Mossy Riverbank', 'Cross Shell Hills', 'Reach Turtle Horizon'],
+    'cat-lockup-expedition': ['Cross Quiet Corridors', 'Cross Open Watchtower', 'Reach Freedom Gate'],
+    'moonlit-aquarium': ['Cross Sunken Ruins', 'Cross Coral Gallery', 'Reach Moonlit Rim'],
   };
   return names[selectedTheme][Math.min(2, stage)];
 }
@@ -190,6 +194,8 @@ function advanceExpedition(): void {
   const goals = expeditionGoals();
   while (expeditionStage < goals.length && highestY >= goals[expeditionStage]) {
     expeditionStage++;
+    if (expeditionStage < 3) incrementAchievement('camps');
+    else incrementAchievement('summits');
     rewardExpeditionStage(expeditionStage);
     if (expeditionStage <= 2) expeditionCheckpointY = goals[expeditionStage - 1];
   }
@@ -244,6 +250,7 @@ function finishExpedition(): void {
 
 function settleZenGround(): void {
   state = 'zenGrounded';
+  incrementAchievement('zen');
   cat.y = GROUND_Y;
   cat.prevY = GROUND_Y;
   cat.vy = 0;
@@ -273,6 +280,8 @@ function registerBellHit(bell: Bell, fromBelow: boolean): void {
   bell.lastHit = elapsed;
   bellCount++;
   bounceChain++;
+  incrementAchievement('bells');
+  observeAchievement('chain', bounceChain);
   const chainBoost = Math.min(165, bounceChain * 7);
   const nextBell = bells.find(b => b.id > bell.id && !b.touched);
   const top = bellTop(bell);
@@ -397,6 +406,7 @@ function checkMoths(): void {
       moth.alive = false;
       descentBlend = 0;
       mothCount++;
+      incrementAchievement('airborne');
       rewardBirdCatch();
       awardPoints(tierPoints(moth.kind));
       multiplier = Math.min(20, multiplier + 1);

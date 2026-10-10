@@ -349,6 +349,91 @@ function drawFallbackCat(x: number, y: number, vx: number, vy: number): void {
   ctx.restore();
 }
 
+const kittenFrameCache = new Map<string, HTMLCanvasElement>();
+function cleanKittenFrame(image: HTMLImageElement, frame: number): HTMLCanvasElement {
+  const key = `${image.src}:${frame}`;
+  const cached = kittenFrameCache.get(key);
+  if (cached) return cached;
+  const cellWidth = image.naturalWidth / 4, cellHeight = image.naturalHeight / 4;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(cellWidth + 52); canvas.height = Math.floor(cellHeight + 82);
+  const paint = canvas.getContext('2d', { willReadFrequently: true })!;
+  // Several kittens extend a muzzle or paw into the next atlas cell. Read a
+  // small overlap, then keep only the connected silhouette of this pose.
+  const left = frame % 4 * cellWidth + 4;
+  const top = Math.max(0, Math.floor(frame / 4) * cellHeight - 60);
+  const sourceWidth = Math.min(cellWidth + 52, image.naturalWidth - left);
+  const sourceHeight = Math.min(cellHeight + 82, image.naturalHeight - top);
+  paint.drawImage(image, left, top, sourceWidth, sourceHeight,
+    0, 0, sourceWidth, sourceHeight);
+  const pixels = paint.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 3; i < pixels.data.length; i += 4) if (pixels.data[i] < 80) pixels.data[i] = 0;
+  // Retain the connected kitten silhouette. A few source poses spill a paw
+  // from the following atlas cell into this one; those islands are separate
+  // from the actual cat and must not flash during animation.
+  const count = canvas.width * canvas.height;
+  const seen = new Uint8Array(count);
+  const queue = new Int32Array(count);
+  let largest: number[] = [];
+  for (let start = 0; start < count; start++) {
+    if (seen[start] || pixels.data[start * 4 + 3] === 0) continue;
+    const component: number[] = [];
+    let head = 0, tail = 1;
+    queue[0] = start; seen[start] = 1;
+    while (head < tail) {
+      const point = queue[head++]; component.push(point);
+      const px = point % canvas.width, py = Math.floor(point / canvas.width);
+      const neighbors = [px > 0 ? point - 1 : -1, px + 1 < canvas.width ? point + 1 : -1,
+        py > 0 ? point - canvas.width : -1, py + 1 < canvas.height ? point + canvas.width : -1];
+      for (const next of neighbors) if (next >= 0 && !seen[next] && pixels.data[next * 4 + 3] > 0) {
+        seen[next] = 1; queue[tail++] = next;
+      }
+    }
+    if (component.length > largest.length) largest = component;
+  }
+  const keep = new Uint8Array(count);
+  for (const point of largest) keep[point] = 1;
+  for (let point = 0; point < count; point++) if (!keep[point]) pixels.data[point * 4 + 3] = 0;
+  paint.putImageData(pixels, 0, 0);
+  kittenFrameCache.set(key, canvas);
+  return canvas;
+}
+function drawKittenFrame(x: number, y: number, vx: number, vy: number, grounded: boolean): void {
+  const useAir = animState === 'launch' || animState === 'rise' || animState === 'apex'
+    || animState === 'fall' || animState === 'undersideContact' || animState === 'boostContact'
+    || animState === 'land';
+  const image = useAir ? kittenAirArt[selectedCharacter] : kittenPoseArt[selectedCharacter];
+  if (!image.complete || !image.naturalWidth) return;
+  const idleFrame = Math.floor(elapsed * 5) % 4;
+  const walkFrame = Math.floor(groundTravel / 9) % 4;
+  let frame: number;
+  if (state === 'title' || state === 'ready' && animState !== 'walk' && animState !== 'crouch') frame = idleFrame;
+  else if (animState === 'walk') frame = 4 + walkFrame;
+  else if (animState === 'crouch') frame = 8 + Math.floor(animStateTime * 9) % 2;
+  else if (animState === 'launch') frame = Math.min(3, Math.floor(animStateTime * 22));
+  else if (animState === 'rise') frame = 4 + Math.min(3, Math.max(0, Math.floor((620 - cat.vy) / 150)));
+  else if (animState === 'apex') frame = 7;
+  else if (animState === 'fall') frame = 8 + Math.floor(animStateTime * 11) % 4;
+  else if (animState === 'land') frame = 12;
+  else if (animState === 'groundLand') frame = 15;
+  else if (animState === 'boostContact') frame = 14;
+  else if (animState === 'undersideContact') frame = lastBellContactDirection === 'side' ? 12 : 13;
+  else frame = grounded ? idleFrame : 11;
+  const sprite = cleanKittenFrame(image, frame);
+  const paintedSize = 96;
+  const anchor = grounded ? 0.94 : 0.72;
+  const tilt = grounded ? 0 : Math.max(-0.13, Math.min(0.13, vx / 2500))
+    + Math.max(-0.08, Math.min(0.08, -vy / 6500));
+  const turnProgress = turnTime / TURN_DURATION;
+  const facing = grounded && turnProgress < 0.5 ? turnFrom : cat.facing;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+  ctx.scale(facing, 1);
+  ctx.drawImage(sprite, -paintedSize / 2, -paintedSize * anchor, paintedSize, paintedSize);
+  ctx.restore();
+}
+
 function drawCat(x: number, y: number, vx: number, vy: number): void {
   const grounded = state === 'title' || state === 'ready' || state === 'zenGrounded' || state === 'expeditionCheckpoint' || animState === 'groundLand' || (animState === 'land' && bounceHold > 0);
   if (grounded) {
@@ -357,6 +442,10 @@ function drawCat(x: number, y: number, vx: number, vy: number): void {
     const alpha = baseSeason(selectedTheme) === 'winter' ? 0.30 : baseSeason(selectedTheme) === 'spring' ? 0.25 : baseSeason(selectedTheme) === 'summer' ? 0.27 : 0.28;
     drawShadow(25 + Math.abs(vx) * 0.012, alpha, 4);
     ctx.restore();
+  }
+  if (selectedForm === 'kitten' && kittenPoseArt[selectedCharacter].naturalWidth) {
+    drawKittenFrame(x, y, vx, vy, grounded);
+    return;
   }
   if (spriteImage.complete && spriteImage.naturalWidth > 0) {
     drawSpriteFrame(x, y, cat.facing, vx, vy);

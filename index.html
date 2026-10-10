@@ -13,11 +13,11 @@
     <div class="ui-panel menu-panel">
       <header><h1>Cats of the Changing Sky</h1><p>Choose a cat, a world, and a way to climb.</p></header>
       <fieldset><legend>Cat</legend><div id="character-options" class="character-options"></div></fieldset>
-      <fieldset><legend>World</legend><div id="season-options" class="season-options"></div></fieldset>
+      <fieldset><legend>World</legend><div class="world-carousel"><button id="world-prev" class="world-arrow" type="button" aria-label="Previous worlds">&#x2039;</button><div id="season-options" class="season-options" aria-label="Worlds"></div><button id="world-next" class="world-arrow" type="button" aria-label="Next worlds">&#x203a;</button></div></fieldset>
       <p id="unlock-feedback" class="unlock-feedback" role="status" aria-live="polite"></p>
       <fieldset><legend>Play mode</legend><div id="mode-options" class="mode-options"></div></fieldset>
       <p id="menu-description" class="menu-description"></p>
-      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button></div>
+      <div class="menu-actions"><button id="start-game" class="primary-button" type="button">Start climb</button><button id="open-scores" type="button">Score board</button><button id="open-shop" type="button">Gear &amp; supplies</button><button id="open-achievements" type="button">Achievements</button></div>
       <p class="fish-wallet"><img src="assets/progression/fish.webp" alt="" /> <span id="fish-balance">0</span> fish</p>
       <div class="audio-levels" role="group" aria-label="Audio levels"><label>Music <input id="music-level" type="range" min="0" max="100" step="5" value="100"></label><label>Effects <input id="effects-level" type="range" min="0" max="100" step="5" value="100"></label></div>
       <p id="menu-best" class="menu-best"></p>
@@ -32,6 +32,14 @@
       <ol id="board-records" class="board-records" tabindex="0" aria-label="Score records"></ol>
     </div>
   </section>
+  <section id="achievements-overlay" class="ui-overlay dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="achievements-title" hidden>
+    <div class="ui-panel achievements-panel">
+      <header class="dialog-header"><h2 id="achievements-title">Achievements</h2><button id="close-achievements" type="button">Close</button></header>
+      <p>Each of the 25 tracks grows from Bronze through Silver to Gold.</p>
+      <div id="achievement-list" class="achievement-list"></div>
+    </div>
+  </section>
+  <div id="achievement-toast" class="achievement-toast" role="status" aria-live="polite" hidden></div>
   <p id="powerup-status" class="powerup-status" role="status" aria-live="polite"></p>
   <!-- LOCAL TEST START -->
   <p id="dev-status" class="dev-status" hidden></p>
@@ -70,8 +78,11 @@
       <p>Choose the cat shown on the browser toolbar. This choice is separate from the cat you play.</p>
       <div id="toolbar-icon-options" class="toolbar-icon-options" role="group" aria-label="Extension toolbar icon"></div>
       <p id="toolbar-icon-feedback" class="toolbar-icon-feedback" role="status" aria-live="polite"></p>
-      <p>Save a copy of this browser's scores, settings, fish, gear, and supplies.</p>
+      <p>Save a copy of this browser's scores, settings, fish, gear, supplies, and achievements.</p>
       <button id="export-save" type="button">Export game data</button>
+      <button id="import-save" type="button">Import game data</button>
+      <input id="import-save-file" type="file" accept="application/json,.json" hidden>
+      <p id="import-save-feedback" role="status" aria-live="polite"></p>
       <button id="reroll-route" type="button">Use Route Reroll at camp (9)</button>
       <!-- LOCAL TEST START -->
       <div id="dev-controls" class="dev-controls" hidden>
@@ -85,6 +96,6 @@
     </div>
   </section>
   <script src="test-build.js" data-local-test></script>
-  <script src="main.js?v=3.36.1"></script>
+  <script src="main.js?v=3.37.1"></script>
 </body>
 </html>

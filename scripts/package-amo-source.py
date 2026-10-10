@@ -7,14 +7,14 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"]
-ADDON_ZIP = ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}-store.zip"
+ADDON_ZIP = ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}-firefox-upload.zip"
 SOURCE_ZIP = ROOT.parent / f"cats-of-the-changing-sky-v{VERSION}-amo-source.zip"
 TEMP_ZIP = SOURCE_ZIP.with_suffix(".zip.tmp")
 MAX_SIZE = 200_000_000
 
 BUILD_README = """# Cats of the Changing Sky — AMO source submission
 
-This archive is the source for the separately uploaded add-on ZIP of the same
+This archive is the source for the separately uploaded Firefox add-on ZIP of the same
 version. It includes the TypeScript files used to generate `main.js`, the
 packaging script, and the local art assets used by the extension. The add-on
 does not download code or assets at runtime.
@@ -31,15 +31,15 @@ From this directory, run this single build script:
 
     python scripts/build-amo.py
 
-It runs `npm ci`, `npm run check`, and `npm run package:store` in order.
+It runs `npm ci`, `npm run check`, and `npm run package:firefox` in order.
 The equivalent commands can also be run individually.
 
-The resulting `cats-of-the-changing-sky-v<VERSION>-store.zip` is written to
+The resulting `cats-of-the-changing-sky-v<VERSION>-firefox-upload.zip` is written to
 the parent directory. Its `manifest.json` is at the archive root. Compare
 the contents of that ZIP with the add-on ZIP uploaded alongside this source
 archive. ZIP timestamps and compression may differ; member contents should
 match. The packaging script removes local test controls and hard-disables
-test mode in the store build.
+test mode in the Firefox upload build.
 
 No private framework, service, or API key is needed to build or run the add-on.
 """.replace("<VERSION>", VERSION)
@@ -47,7 +47,7 @@ No private framework, service, or API key is needed to build or run the add-on.
 
 def main():
     if not ADDON_ZIP.is_file():
-        raise FileNotFoundError(f"Build the matching store ZIP first: {ADDON_ZIP}")
+        raise FileNotFoundError(f"Build the matching Firefox ZIP first: {ADDON_ZIP}")
 
     with zipfile.ZipFile(ADDON_ZIP) as addon:
         if addon.testzip():
@@ -55,7 +55,7 @@ def main():
         addon_manifest = json.loads(addon.read("manifest.json"))
         if addon_manifest["version"] != VERSION:
             raise RuntimeError("The add-on ZIP does not match the source version")
-        if addon.read("manifest.json") != (ROOT / "manifest.json").read_bytes():
+        if addon.read("manifest.json") != (ROOT / "manifest.firefox.json").read_bytes():
             raise RuntimeError("The add-on ZIP manifest differs from the source")
         runtime_names = set(addon.namelist())
 
@@ -66,7 +66,7 @@ def main():
     source_names.update({
         "package.json", "package-lock.json", "tsconfig.json",
         "scripts/package-extension.py", "scripts/build-amo.py",
-        "test-build.js",
+        "test-build.js", "manifest.firefox.json",
     })
     source_names.update(path.relative_to(ROOT).as_posix()
                         for path in (ROOT / "source").glob("*.ts"))

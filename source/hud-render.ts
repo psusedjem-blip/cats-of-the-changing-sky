@@ -36,10 +36,10 @@ function drawHUD(): void {
   const bestW = compact ? scoreW : scoreW;
   const lineCount = Math.max(decimalLines(score, scoreFont, scoreW - 8).length,
     decimalLines(bestForMode(), bestFont, bestW - 8).length);
-  const panelH = (compact ? expedition ? 137 : 117 : 84) + Math.max(0, lineCount - 1) * 19;
-  ctx.fillStyle = 'rgba(4,18,30,.94)';
-  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 15); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.30)'; ctx.lineWidth = 1.1; ctx.stroke();
+  const panelH = (compact ? expedition ? 121 : 101 : 69) + Math.max(0, lineCount - 1) * 19;
+  ctx.fillStyle = 'rgba(4,18,30,.72)';
+  ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, panelH, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.stroke();
   const firstX = panelX + 15;
   const secondX = compact ? panelX + 27 + scoreW : firstX + scoreW + 12;
   ctx.textAlign = 'left';
@@ -54,12 +54,12 @@ function drawHUD(): void {
   if (compact) {
     ctx.fillStyle = '#eaf7ff';
     ctx.font = '700 11px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 24, panelW - 30);
+    ctx.fillText(`BOUNCES ${bellCount}   ·   MULTI x${multiplier}`, firstX, statY + 8, panelW - 30);
     if (expedition) {
       const goals = expeditionGoals();
       const target = goals[Math.min(2, expeditionStage)];
       ctx.fillStyle = themeMeta().accent;
-      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 44, panelW - 30);
+      ctx.fillText(`STAGE ${Math.min(3, expeditionStage + 1)}/3   ·   ${Math.max(0, Math.ceil(target - highestY)).toLocaleString()} TO GO`, firstX, statY + 28, panelW - 30);
     }
   } else {
     const thirdX = secondX + bestW + 12;
@@ -316,6 +316,10 @@ function drawExpeditionComplete(): void {
     'great-egg-hunt': `${CHARACTER_META[selectedCharacter].name} reaches the Conservatory Crown beyond the clouds.`,
     'fireworks-fair': `${CHARACTER_META[selectedCharacter].name} reaches the Coastal Crown above the fair.`,
     'moonlit-masquerade': `${CHARACTER_META[selectedCharacter].name} reaches the Moonlit Crown beyond the oak.`,
+    'great-yarn-tangle': `${CHARACTER_META[selectedCharacter].name} reaches the Starry Loom.`,
+    'turtleback-world': `${CHARACTER_META[selectedCharacter].name} sees the great turtle and the horizon.`,
+    'cat-lockup-expedition': `${CHARACTER_META[selectedCharacter].name} reaches the Freedom Gate.`,
+    'moonlit-aquarium': `${CHARACTER_META[selectedCharacter].name} reaches the moonlit aquarium rim.`,
   };
   ctx.fillStyle = themeMeta().accent;
   ctx.font = '600 15px ui-rounded, system-ui, sans-serif';

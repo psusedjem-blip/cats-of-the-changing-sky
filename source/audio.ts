@@ -459,6 +459,80 @@ function scheduleMoonlitMasqueradeBar(bar: number, when: number): number {
   return length;
 }
 
+function scheduleYarnTangleBar(bar: number, when: number): number {
+  // A lilting 5-beat music-box waltz, with a descending stitched melody.
+  const beat = 0.28, length = beat * 5;
+  const chords = [
+    { bass: 48, notes: [60, 64, 67, 71], tune: [79, 76, 72] },
+    { bass: 45, notes: [57, 60, 64, 69], tune: [76, 74, 69] },
+    { bass: 50, notes: [62, 65, 69, 72], tune: [77, 74, 72] },
+    { bass: 43, notes: [55, 59, 62, 67], tune: [74, 71, 67] },
+  ];
+  const chord = chords[Math.floor(bar / 2) % chords.length];
+  scheduleCello(chord.bass, when, length * 0.91, 0.008);
+  for (let step = 0; step < 5; step++)
+    schedulePixelPluck(chord.notes[[0, 2, 1, 3, 2][step]] + 12, when + beat * step, 0.21, step === 0 ? 0.008 : 0.005);
+  scheduleMallet(chord.tune[bar % 3], when + beat * 0.6, 0.44, 0.011);
+  if (bar % 2) scheduleChime(chord.tune[(bar + 1) % 3] + 12, when + beat * 3.3, 0.36, 0.006);
+  return length;
+}
+
+function scheduleTurtlebackBar(bar: number, when: number): number {
+  // Slow, grounded six-beat march opening into high bell answers.
+  const beat = 0.38, length = beat * 6;
+  const chords = [
+    { bass: 43, notes: [55, 59, 62, 67], tune: [74, 79] },
+    { bass: 47, notes: [59, 62, 66, 71], tune: [78, 81] },
+    { bass: 52, notes: [64, 67, 71, 76], tune: [83, 79] },
+    { bass: 45, notes: [57, 60, 64, 69], tune: [76, 81] },
+  ];
+  const chord = chords[bar % chords.length];
+  scheduleCello(chord.bass - 12, when, length * 0.96, 0.016);
+  scheduleWarmPad(chord.notes[1], when, length * 0.94, 0.005);
+  schedulePiano(chord.notes[0] + 12, when + beat, beat * 1.8, 0.015);
+  schedulePiano(chord.notes[2] + 12, when + beat * 3, beat * 1.7, 0.011);
+  if (bar % 2 === 0) scheduleMallet(chord.tune[0], when + beat * 2.2, 0.55, 0.010);
+  scheduleChime(chord.tune[1], when + beat * 4.7, 0.60, 0.007);
+  return length;
+}
+
+function scheduleCatLockupBar(bar: number, when: number): number {
+  // A deliberate seven-beat escape motif with brass-like mallet calls.
+  const beat = 0.29, length = beat * 7;
+  const chords = [
+    { bass: 50, notes: [62, 65, 69, 74], tune: [77, 81, 86] },
+    { bass: 46, notes: [58, 62, 65, 70], tune: [74, 77, 82] },
+    { bass: 53, notes: [65, 69, 72, 77], tune: [81, 84, 89] },
+    { bass: 48, notes: [60, 64, 67, 72], tune: [79, 83, 86] },
+  ];
+  const chord = chords[Math.floor(bar / 2) % chords.length];
+  scheduleCello(chord.bass - 12, when, length * 0.93, 0.014);
+  schedulePiano(chord.notes[0], when + beat * 0.2, beat * 2, 0.019);
+  scheduleMallet(chord.tune[0], when + beat * 1.1, 0.42, 0.011);
+  scheduleMallet(chord.tune[1], when + beat * 3.1, 0.37, 0.009);
+  if (bar % 2) scheduleChime(chord.tune[2], when + beat * 5.4, 0.45, 0.008);
+  scheduleBrush(when + beat * 6.4, 0.002);
+  return length;
+}
+
+function scheduleAquariumBar(bar: number, when: number): number {
+  // A floating eight-beat glass-harmonic phrase, with a low tide pulse.
+  const beat = 0.34, length = beat * 8;
+  const chords = [
+    { bass: 45, notes: [57, 60, 64, 69, 72], tune: [76, 81, 84] },
+    { bass: 52, notes: [64, 67, 71, 76, 79], tune: [79, 83, 88] },
+    { bass: 48, notes: [60, 64, 67, 72, 76], tune: [72, 79, 84] },
+    { bass: 50, notes: [62, 65, 69, 74, 77], tune: [77, 81, 86] },
+  ];
+  const chord = chords[bar % chords.length];
+  scheduleWarmPad(chord.notes[0], when, length * 0.98, 0.007);
+  scheduleCello(chord.bass - 12, when, length * 0.87, 0.007);
+  for (let step = 0; step < 4; step++)
+    scheduleChime(chord.notes[step + 1] + 12, when + beat * (step * 2 + 0.5), beat * 2.2, 0.006);
+  if (bar % 2 === 0) scheduleMallet(chord.tune[1], when + beat * 3.2, 0.75, 0.006);
+  return length;
+}
+
 function updateMusic(context: MusicContext): void {
   if (!audioCtx || audioCtx.state !== 'running' || muted) return;
   const now = audioCtx.currentTime;
@@ -475,13 +549,18 @@ function updateMusic(context: MusicContext): void {
     else if (context.theme === 'starlight-eve') len = scheduleStarlightEveBar(musicBar, musicNext);
     else if (context.theme === 'great-egg-hunt') len = scheduleGreatEggHuntBar(musicBar, musicNext);
     else if (context.theme === 'fireworks-fair') len = scheduleFireworksFairBar(musicBar, musicNext);
-    else len = scheduleMoonlitMasqueradeBar(musicBar, musicNext);
+    else if (context.theme === 'moonlit-masquerade') len = scheduleMoonlitMasqueradeBar(musicBar, musicNext);
+    else if (context.theme === 'great-yarn-tangle') len = scheduleYarnTangleBar(musicBar, musicNext);
+    else if (context.theme === 'turtleback-world') len = scheduleTurtlebackBar(musicBar, musicNext);
+    else if (context.theme === 'cat-lockup-expedition') len = scheduleCatLockupBar(musicBar, musicNext);
+    else len = scheduleAquariumBar(musicBar, musicNext);
     const chapter = context.chapter;
     if (!isFestival(context.theme)) scheduleChapterOrnaments(musicBar, musicNext, len, chapter, context.theme);
     if (chapter !== musicChapterBand) {
       const chapterNote: Record<ThemeName, number> = {
         winter: 74, spring: 79, summer: 81, autumn: 76,
         'starlight-eve': 87, 'great-egg-hunt': 90, 'fireworks-fair': 88, 'moonlit-masquerade': 75,
+        'great-yarn-tangle': 79, 'turtleback-world': 81, 'cat-lockup-expedition': 76, 'moonlit-aquarium': 74,
       };
       scheduleChime(chapterNote[context.theme] + chapter * 2,
         musicNext + len * 0.15, 0.34, 0.006);
